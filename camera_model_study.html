@@ -201,7 +201,7 @@ table.def td.val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-
 <section class="step" id="fm">
   <h2><span class="num">⑤</span>8점 알고리즘 — 대응점 8쌍 이상으로 기본 행렬 F 추정</h2>
   <h3 class="sub">1. 에피폴라 선: 이미지 1의 점 하나 = 광선 하나 → 이미지 2에서는 선 하나</h3>
-  <div class="card"><h3>개념도 <small>· <span class="c2">카메라 2</span> = <span class="c">카메라 1</span>에서 오른쪽 1 m, 위로 0.5 m, 안쪽으로 20° 회전 · f = 500 · 이미지 800×600</small></h3><canvas id="epx"></canvas>
+  <div class="card"><h3>개념도</h3><img src="data/epipolar_line.png" alt="이미지 1의 점 x_1 하나에 깊이 Z = 1, 2, 3, 4가 모두 찍히고, 이미지 2에서는 그 점들이 한 직선(에피폴라 선) 위에 놓인 그림" style="display:block;width:100%;height:auto;background:#fff;border-radius:6px">
     <p class="note">깊이를 모르는 x_1의 광선을 이미지 2에 투영하면 직선이 된다 = <b class="i">에피폴라 선</b>. x_1의 짝은 반드시 이 선 위에 있다. ③에서 같은 행만 찾은 것은 회전이 없어 이 선이 수평이었기 때문이다.</p></div>
   <h3 class="sub">2. 실제 사진: [R | t]를 모르므로 대응점 8쌍으로 F를 구하고, F로 에피폴라 선을 그린다 (F x_1 = 이미지 2의 선)</h3>
   <div class="card"><h3>이미지 1 <small>(DTU scan 114, 시점 13)</small> · 이미지 2 <small>(시점 32, 시점 차이 25.9°) · <span class="p">초록 = F 계산에 쓴 대응점</span> (<span style="color:var(--bad);font-weight:600">빨강 = 틀린 짝</span>) · <span class="i">보라 = 선택한 점의 에피폴라 선 (추정 F)</span>, 흰 점선 = 기준 F · 이미지 1을 누르면 점 선택</small></h3><canvas id="pair"></canvas></div>
@@ -384,59 +384,12 @@ $('nfm').value=S4.n;$('nfm').addEventListener('input',e=>{S4.n=parseInt(e.target
 $('bad1').addEventListener('change',e=>{S4.bad=e.target.checked;renderAll()});
 $('resample').onclick=()=>{S4.seed++;S4.sel=null;renderAll()};
 $('allLines').onclick=()=>{S4.all=!S4.all;renderAll()};
-/* ⑤-1 개념도: 카메라 1 = 원점, 카메라 2 = C2에서 y축으로 20° 회전, x_c = R (P − C2) */
-const EX={f:500,cx:400,cy:300,W:800,H:600,x1:[500,350],th:20*Math.PI/180,C2:[1,-0.5,0],Zs:[1,2,3,4]};
-EX.d=[(EX.x1[0]-EX.cx)/EX.f,(EX.x1[1]-EX.cy)/EX.f,1];
-function exProj(Z){const c=Math.cos(EX.th),s=Math.sin(EX.th),X=Z*EX.d[0]-EX.C2[0],Y=Z*EX.d[1]-EX.C2[1],Zc=Z*EX.d[2]-EX.C2[2];
-  const xc=c*X+s*Zc,yc=Y,zc=-s*X+c*Zc;return [EX.f*xc/zc+EX.cx,EX.f*yc/zc+EX.cy]}
-function renderEpx(){
-  const cv=$('epx'),W0=cv.clientWidth||300,wide=W0>=640,TT=22,GP=14;
-  let pw,ph,tw,th,lay;
-  if(wide){tw=Math.round(W0*.2);pw=(W0-tw-2*GP)/2;ph=pw*.75;th=ph;lay=[[0,TT],[pw+GP,TT],[pw+GP+tw+GP,TT]]}
-  else{pw=W0;ph=pw*.75;tw=W0;th=W0*.8;lay=[[0,TT],[0,2*TT+ph+GP],[0,3*TT+ph+th+2*GP]]}
-  const Htot=wide?TT+ph+8:3*TT+2*ph+th+2*GP+8;
-  const {ctx}=setup(cv,Htot/W0),c1=tok('--cam'),c2=tok('--cam2'),pc=tok('--p'),im=tok('--img'),mut=tok('--muted'),ink=tok('--ink');
-  const font=(px,b)=>`${b?'600 ':''}${px}px ${tok('--sans')}`;
-  const title=(x,y,s,col)=>{ctx.fillStyle=col;ctx.font=font(13.5,true);ctx.fillText(s,x,y-7)};
-  const pts=EX.Zs.map(exProj),pinf=exProj(1e7),sI=pw/EX.W;
-  const frame=(x0,y0,col)=>{ctx.fillStyle=tok('--soft');ctx.fillRect(x0,y0,pw,ph);ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.strokeRect(x0,y0,pw,ph);
-    ctx.fillStyle=mut;ctx.font=`11px ${tok('--mono')}`;ctx.textAlign='right';ctx.fillText('800 × 600',x0+pw-6,y0+ph-6);ctx.textAlign='left'};
-  const lab=(x,y,s,col,al)=>{ctx.font=font(12,true);ctx.fillStyle=col;ctx.textAlign=al||'left';ctx.fillText(s,x,y);ctx.textAlign='left'};
-  // 이미지 1
-  let [x0,y0]=lay[0];title(x0,y0,'이미지 1',c1);frame(x0,y0,c1);
-  const q1=[x0+EX.x1[0]*sI,y0+EX.x1[1]*sI];
-  dotI(ctx,q1[0],q1[1],pc,6);dotI(ctx,q1[0],q1[1],pc,11,true);
-  lab(q1[0]-14,q1[1]+30,'x_1 = (500, 350)',pc,'right');lab(q1[0]-14,q1[1]+47,'Z = 1, 2, 3, 4 모두 이 픽셀',pc,'right');
-  // 위에서 본 그림
-  [x0,y0]=lay[1];title(x0,y0,'위에서 본 그림 (X–Z) · 격자 1 m',ink);
-  const V={xmin:-.7,xmax:1.8,zmin:-.75,zmax:4.6},sc=Math.min(tw/(V.xmax-V.xmin),th/(V.zmax-V.zmin)),ox=x0+(tw-sc*(V.xmax-V.xmin))/2,oz=y0+th-(th-sc*(V.zmax-V.zmin))/2;
-  V.to=(x,z)=>[ox+(x-V.xmin)*sc,oz-(z-V.zmin)*sc];
-  ctx.save();ctx.beginPath();ctx.rect(x0,y0,tw,th);ctx.clip();
-  for(let i=-1;i<=5;i++){L(ctx,V,[i,-1],[i,5],tok('--grid'),1);L(ctx,V,[-1,i],[2,i],tok('--grid'),1)}
-  const C2=[EX.C2[0],EX.C2[2]],fw2=[-Math.sin(EX.th),Math.cos(EX.th)],rt2=[Math.cos(EX.th),Math.sin(EX.th)];
-  EX.Zs.forEach(Z=>L(ctx,V,C2,[Z*EX.d[0],Z],c2,1.1,[4,3]));
-  L(ctx,V,[0,0],[4.6*EX.d[0],4.6],c1,1.8);
-  EX.Zs.forEach(Z=>{P(ctx,V,[Z*EX.d[0],Z],pc,5.5);T(ctx,V,[Z*EX.d[0],Z],'Z='+Z,pc,-9,4,true,'right')});
-  cam(ctx,V,[0,0],[1,0],[0,1],c1,false);cam(ctx,V,C2,rt2,fw2,c2,false);
-  T(ctx,V,[0,0],'카메라 1',c1,-12,20,true,'right');T(ctx,V,C2,'카메라 2',c2,6,20,true,'left');
-  T(ctx,V,[3.6*EX.d[0],3.6],'x_1의 광선',c1,10,0,true);
-  ctx.restore();
-  // 이미지 2
-  [x0,y0]=lay[2];title(x0,y0,'이미지 2',c2);frame(x0,y0,c2);
-  const toI=p=>[x0+p[0]*sI,y0+p[1]*sI],a=toI(pts[0]),b=toI(pinf),dx=b[0]-a[0],dy=b[1]-a[1];
-  ctx.save();ctx.beginPath();ctx.rect(x0,y0,pw,ph);ctx.clip();ctx.strokeStyle=im;ctx.lineWidth=2.5;ctx.setLineDash([7,5]);
-  ctx.beginPath();ctx.moveTo(a[0]-dx*2,a[1]-dy*2);ctx.lineTo(a[0]+dx*3,a[1]+dy*3);ctx.stroke();ctx.restore();
-  const OFF=[[12,17,'left'],[12,17,'left'],[-12,-12,'right'],[12,17,'left']];
-  pts.forEach((p,i)=>{const q=toI(p);dotI(ctx,q[0],q[1],pc,6);lab(q[0]+OFF[i][0],q[1]+OFF[i][1],`Z=${EX.Zs[i]} (${p[0].toFixed(0)}, ${p[1].toFixed(0)})`,pc,OFF[i][2])});
-  dotI(ctx,b[0],b[1],im,7,true);lab(b[0]-10,b[1]-12,`Z=∞ (${pinf[0].toFixed(0)}, ${pinf[1].toFixed(0)})`,im,'right');
-  lab(x0+14,y0+24,'에피폴라 선',im);
-}
 const GAP=10;
 $('pair').addEventListener('click',e=>{const r=$('pair').getBoundingClientRect(),k=(r.width-GAP)/2/DP.W,x=(e.clientX-r.left)/k,y=(e.clientY-r.top)/k;if(x>DP.W)return;
   let best=null,bd=1e9;GI.forEach(i=>{const d=Math.hypot(DP.a[i][0]-x,DP.a[i][1]-y);if(d<bd){bd=d;best=i}});S4.sel=best;renderAll()});
 function render4(){
   if(!$('fm')||$('fm').hidden)return;
-  renderEpx();$('allLines').setAttribute('aria-pressed',S4.all?'true':'false');$('allLines').textContent=S4.all?`${S4.n}쌍의 에피폴라 선 숨기기`:`${S4.n}쌍의 에피폴라 선 모두 보기`;
+  $('allLines').setAttribute('aria-pressed',S4.all?'true':'false');$('allLines').textContent=S4.all?`${S4.n}쌍의 에피폴라 선 숨기기`:`${S4.n}쌍의 에피폴라 선 모두 보기`;
   $('nfmo').textContent=S4.n+(S4.bad?' (틀린 1개 포함)':'');
   const idx=sample(),F=eightPoint(idx.map(i=>DP.a[i]),idx.map(i=>DP.b[i])),E=meanErr(F);
   const inS=new Set(idx);const sel=S4.sel??GI.find((g,n)=>n>=Math.floor(GI.length*0.37)&&!inS.has(g)),sa=DP.a[sel],sb=DP.b[sel],used=inS.has(sel);
