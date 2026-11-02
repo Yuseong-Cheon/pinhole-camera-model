@@ -201,8 +201,7 @@ table.def td.val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-
 <section class="step" id="fm">
   <h2><span class="num">⑤</span>8점 알고리즘 — 대응점 8쌍 이상으로 기본 행렬 F 추정</h2>
   <h3 class="sub">1. 에피폴라 선: 이미지 1의 점 하나 = 광선 하나 → 이미지 2에서는 선 하나</h3>
-  <div class="card"><h3>개념도</h3><img src="data/epipolar_line.png" alt="이미지 1의 점 x_1 하나에 깊이 Z = 1, 2, 3, 4가 모두 찍히고, 이미지 2에서는 그 점들이 한 직선(에피폴라 선) 위에 놓인 그림" style="display:block;width:100%;height:auto;background:#fff;border-radius:6px">
-    <p class="note">깊이를 모르는 x_1의 광선을 이미지 2에 투영하면 직선이 된다 = <b class="i">에피폴라 선</b>. x_1의 짝은 반드시 이 선 위에 있다. ③에서 같은 행만 찾은 것은 회전이 없어 이 선이 수평이었기 때문이다.</p></div>
+  <div class="card"><h3>개념도</h3><img src="data/epipolar_line.png" alt="이미지 1의 점 x_1 하나에 깊이 Z = 1, 2, 3, 4가 모두 찍히고, 이미지 2에서는 그 점들이 한 직선(에피폴라 선) 위에 놓인 그림" style="display:block;width:100%;height:auto;background:#fff;border-radius:6px"></div>
   <h3 class="sub">2. 실제 사진: [R | t]를 모르므로 대응점 8쌍으로 F를 구하고, F로 에피폴라 선을 그린다 (F x_1 = 이미지 2의 선)</h3>
   <div class="card"><h3>이미지 1 <small>(DTU scan 114, 시점 13)</small> · 이미지 2 <small>(시점 32, 시점 차이 25.9°) · <span class="p">초록 = F 계산에 쓴 대응점</span> (<span style="color:var(--bad);font-weight:600">빨강 = 틀린 짝</span>) · <span class="i">보라 = 선택한 점의 에피폴라 선 (추정 F)</span>, 흰 점선 = 기준 F · 이미지 1을 누르면 점 선택</small></h3><canvas id="pair"></canvas></div>
   <div class="grid2">
