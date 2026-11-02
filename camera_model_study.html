@@ -1,0 +1,498 @@
+<title>핀홀 카메라 모델</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap">
+<style>
+/* 레이아웃: 흐름 띠(①→②→③) → 단계마다 [한 줄 메시지 · 그림 · 손계산 · 물었던 것]. 모눈 공책, 색은 뜻 고정. */
+:root{
+  --bg:#f3f5f8; --panel:#ffffff; --ink:#172031; --muted:#5a6578; --line:#d5dce6; --grid:#e7ecf2;
+  --x:#c45f08; --z:#1f5fc4; --p:#13834a; --cam:#3b3a8f; --cam2:#b0306a; --img:#8a3fb0; --fov:rgba(31,95,196,.07); --soft:#eef2f8; --bad:#c62828; --flat:#5f7896;
+  --sans:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11161f; --panel:#171e2a; --ink:#e4e9f1; --muted:#9aa5b8; --line:#2c3646; --grid:#1f2733;
+  --x:#f0943f; --z:#6ea4ff; --p:#45c483; --cam:#a9a7ff; --cam2:#f07aaa; --img:#d08cf0; --fov:rgba(110,164,255,.09); --soft:#1c2432; --bad:#ff6b6b; --flat:#9db3cf; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11161f; --panel:#171e2a; --ink:#e4e9f1; --muted:#9aa5b8; --line:#2c3646; --grid:#1f2733;
+  --x:#f0943f; --z:#6ea4ff; --p:#45c483; --cam:#a9a7ff; --cam2:#f07aaa; --img:#d08cf0; --fov:rgba(110,164,255,.09); --soft:#1c2432; --bad:#ff6b6b; --flat:#9db3cf; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55}
+.wrap{max-width:1180px;margin:0 auto;padding-block:22px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:26px}
+header{display:grid;gap:10px}
+header h1{font-size:1.6rem;margin:0}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:.95rem}
+.flow a{color:var(--ink);text-decoration:none;border:1px solid var(--line);background:var(--panel);padding:5px 12px;border-radius:999px}
+.flow a.next{border-style:dashed;color:var(--muted)}
+.flow span{color:var(--muted)}
+.flow .next-chip{border:1px dashed var(--line);padding:5px 12px;border-radius:999px}
+.problem{border:2px solid var(--ink);border-radius:10px;padding:12px 16px;display:grid;gap:4px;background:var(--panel)}
+.problem b{font-size:1.08rem}
+.problem span{color:var(--muted)}
+.formula{font-family:var(--mono);font-size:1.05rem}
+.x{color:var(--x);font-weight:600}.z{color:var(--z);font-weight:600}.p{color:var(--p);font-weight:600}.c{color:var(--cam);font-weight:600}.c2{color:var(--cam2);font-weight:600}.i{color:var(--img);font-weight:600}
+section.step{display:grid;gap:12px}
+section.step h2{margin:0;font-size:1.25rem;text-wrap:balance}
+section.step h2 .num{display:inline-block;min-width:1.6em;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.card{min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.card h3{margin:0 0 6px;font-size:.92rem;font-weight:600}
+.card h3 small{color:var(--muted);font-weight:400}
+canvas{display:block;width:100%;height:auto;touch-action:none}
+.knobs{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px 18px}
+.knobs label{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;font-size:.88rem}
+.knobs output{font-family:var(--mono);font-variant-numeric:tabular-nums;min-width:4.2em;text-align:right}
+.knobs input{width:100%}
+.presets{display:flex;flex-wrap:wrap;gap:6px}
+.presets button{font:inherit;font-size:.85rem;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:4px 10px;border-radius:999px;cursor:pointer}
+.presets button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--z);outline-offset:2px}
+.eq{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:.9rem;display:flex;flex-wrap:wrap;align-items:center;gap:8px;overflow-x:auto;padding:3px 0}
+.eq.big{font-size:1.05rem;font-weight:600}
+.mat{display:inline-block;border-left:2px solid var(--ink);border-right:2px solid var(--ink);border-radius:5px;padding:1px 5px}
+.mat table{border-collapse:collapse}.mat td{padding:0 6px;text-align:right}
+tr.x td{color:var(--x)} tr.z td{color:var(--z)}
+.qa{display:grid;grid-template-columns:minmax(0,15em) minmax(0,1fr);gap:6px 16px;margin:0;font-size:.92rem;background:var(--soft);border-radius:10px;padding:12px 16px}
+.qa dt{color:var(--muted)}
+.qa dd{margin:0}
+.bridge{font-size:1.02rem;font-weight:600;border-left:3px solid var(--ink);padding:2px 0 2px 12px}
+.note{color:var(--muted);font-size:.85rem;margin:2px 0 0}
+[hidden]{display:none!important}
+.defwrap{overflow-x:auto}
+h3.sub{margin:4px 0 0;font-size:1.02rem}
+.quad{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.case{border-top:4px solid var(--cc)}
+.case h3 b{color:var(--cc);margin-left:6px}
+.case .eq{margin:6px 0 0;font-size:.86rem}
+@media (max-width:820px){.quad{grid-template-columns:1fr}}
+.emapwrap{display:grid;gap:8px}
+.bars{display:grid;gap:6px;margin-top:10px}
+.bar{display:grid;grid-template-columns:minmax(0,13em) 1fr auto;gap:10px;align-items:center;font-size:.88rem}
+.bar .track{height:12px;background:var(--grid);border-radius:6px;overflow:hidden}
+.bar .fillb{height:100%;border-radius:6px}
+.bar output{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.mat td{white-space:nowrap}
+.knobs .presets{align-self:center}
+.knobs .note{grid-column:1/-1}
+#fm .knobs{grid-template-columns:minmax(260px,1.4fr) minmax(200px,1fr) auto}
+@media (max-width:820px){#fm .knobs{grid-template-columns:1fr}}
+table.def{border-collapse:collapse;width:100%;font-size:.92rem}
+table.def th,table.def td{padding:7px 12px 7px 0;border-top:1px solid var(--line);vertical-align:middle;text-align:left}
+table.def tr:first-child th,table.def tr:first-child td{border-top:0}
+table.def th{font-family:var(--mono);white-space:nowrap}
+table.def .mat td{padding:0 6px;border:0;text-align:right}
+.grid2{align-items:start}
+table.def td.val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;padding-right:0}
+.flow a[aria-current="page"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.pager{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.pager button{font:inherit;font-size:1rem;font-weight:600;border:1px solid var(--ink);background:var(--panel);color:var(--ink);padding:8px 18px;border-radius:999px;cursor:pointer}
+.pager button.go{background:var(--ink);color:var(--bg)}
+.pager button:disabled{opacity:.3;cursor:default}
+.pager span{font-family:var(--mono);color:var(--muted)}
+@media (max-width:820px){.grid2{grid-template-columns:1fr}.qa{grid-template-columns:1fr}.qa dd{margin-bottom:6px}}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>핀홀 카메라 모델</h1>
+  <div class="card"><h3>원근 투영 공식 (바닥 2D)</h3>
+    <div class="eq">① 월드 → 카메라 &nbsp; (x_c, z_c)ᵀ = R (P − C) = R P + t, &nbsp; R = <span class="mat"><table><tr><td>cos θ</td><td>sin θ</td></tr><tr><td>−sin θ</td><td>cos θ</td></tr></table></span>, &nbsp; t = −R C</div>
+    <div class="eq">&nbsp;&nbsp; 카메라 중심 &nbsp; C = −Rᵀ t</div>
+    <div class="eq">② 카메라 → 이미지 &nbsp; u = f · x_c / z_c + c_x</div>
+    <div class="eq">③ 스테레오 깊이 &nbsp; Z = f · b / d, &nbsp; d = u_2 − u_1 (시차) &nbsp;(평행 스테레오, 기준선 b)</div>
+    <div class="eq">④ Harris 점수 &nbsp; R = det(M) − k · trace(M)², &nbsp; M = Σ<sub>창</sub> [[I_x², I_x I_y], [I_x I_y, I_y²]] &nbsp;· 비율 검사 d_1 / d_2 &lt; 0.75</div>
+    <div class="eq">⑤ 에피폴라 제약 &nbsp; x_2ᵀ F x_1 = 0, &nbsp; F = K_2⁻ᵀ [t]ₓ R K_1⁻¹ &nbsp;(R, t: 카메라 1 → 2, [t]ₓ: t의 외적 행렬)</div>
+    <p class="note">3D: z_c · (u, v, 1)ᵀ = K [R | t] (X, Y, Z, 1)ᵀ, &nbsp; K = [[f, 0, c_x], [0, f, c_y], [0, 0, 1]]</p>
+  </div>
+  <nav class="flow" aria-label="흐름">
+    <a href="#rt">① 외부 파라미터 [R | t] &nbsp;월드 → 카메라</a><span>→</span>
+    <a href="#k">② 내부 파라미터 K &nbsp;카메라 → 이미지</a><span>→</span>
+    <a href="#ep">③ 삼각측량 · 스테레오</a><span>→</span>
+    <a href="#feat">④ 특징점 검출 · 매칭</a><span>→</span>
+    <a href="#fm">⑤ 8점 알고리즘</a><span>→</span>
+    <span class="next-chip">⑥ RANSAC (예정)</span>
+  </nav>
+</header>
+
+<!-- ① R|t -->
+<section class="step" id="rt">
+  <h2><span class="num">①</span>외부 파라미터 [R | t] — 월드 좌표계 → 카메라 좌표계 변환</h2>
+  <div class="grid2">
+    <div class="card"><h3>월드 좌표계 <small>· 평면도 · 격자 1칸 = 1 m</small></h3><canvas id="w1"></canvas></div>
+    <div class="card"><h3>카메라 좌표계 <small>· <span class="x">x_c</span> 오른쪽, <span class="z">z_c</span> 광축 (앞)</small></h3><canvas id="v1"></canvas></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>파라미터</h3><div class="defwrap" id="def1"></div></div>
+    <div class="card knobs" aria-label="R|t 손잡이">
+      <label for="px"><span class="p">P_X</span><input id="px" type="range" min="-1" max="5" step="0.1"><output id="pxo"></output></label>
+      <label for="pz"><span class="p">P_Z</span><input id="pz" type="range" min="-1" max="5" step="0.1"><output id="pzo"></output></label>
+      <label for="cx"><span class="c">C_X</span><input id="cx" type="range" min="-1" max="5" step="0.1"><output id="cxo"></output></label>
+      <label for="cz"><span class="c">C_Z</span><input id="cz" type="range" min="-1" max="5" step="0.1"><output id="czo"></output></label>
+      <label for="th"><span class="c">회전각 θ (반시계 +)</span><input id="th" type="range" min="-90" max="90" step="5"><output id="tho"></output></label>
+    </div>
+  </div>
+  <div class="problem">
+    <b>문제: 3D 점의 카메라 좌표(m)는 구했으나, 이미지는 픽셀 단위이다.</b>
+    <span>3D와 이미지를 비교하려면(예: 재투영 오차) 점의 픽셀 좌표가 필요하다 → ② 내부 파라미터 K</span>
+  </div>
+</section>
+
+<!-- ② K -->
+<section class="step" id="k">
+  <h2><span class="num">②</span>내부 파라미터 K — 카메라 좌표계 → 이미지 좌표 (원근 투영)</h2>
+  <div class="grid2">
+    <div class="card"><h3>평면도 <small>· 개념도 (이미지 평면 위치는 임의)</small></h3><canvas id="w2"></canvas></div>
+    <div style="display:grid;gap:12px;min-width:0">
+      <div class="card"><h3>이미지 <small>· 1행, 0–640 픽셀</small></h3><canvas id="s2"></canvas></div>
+      <div class="card"><h3>파라미터</h3><div class="defwrap" id="def2"></div></div>
+      <div class="card knobs" aria-label="K 손잡이">
+        <label for="xc"><span class="x">x_c</span><input id="xc" type="range" min="-3" max="3" step="0.1"><output id="xco"></output></label>
+        <label for="zc"><span class="z">z_c</span><input id="zc" type="range" min="0.5" max="6" step="0.1"><output id="zco"></output></label>
+        <label for="f">f<input id="f" type="range" min="200" max="1000" step="10"><output id="fo"></output></label>
+        <label for="k"><span class="p">광선 따라 이동 (깊이 ×)</span><input id="k" type="range" min="0.5" max="2" step="0.05"><output id="ko"></output></label>
+      </div>
+    </div>
+  </div>
+  <div class="problem">
+    <b>문제: 같은 광선 위의 점은 모두 같은 u로 투영된다 (깊이 모호성) → 단일 이미지로는 깊이를 알 수 없다.</b>
+    <span>다른 시점의 광선이 하나 더 필요하다 → ③ 삼각측량 · 에피폴라 기하 · 스테레오 (깊이 카메라도 같은 원리)</span>
+  </div>
+</section>
+<!-- ③ two cameras -->
+<section class="step" id="ep">
+  <h2><span class="num">③</span>삼각측량 · 스테레오 — 두 광선의 교점으로 깊이 결정</h2>
+  <div class="grid2">
+    <div class="card"><h3>평면도 <small>· <span class="c">카메라 1</span> 원점, <span class="c2">카메라 2</span> 왼쪽으로 기준선 b · 같은 방향 (평행 스테레오) · 격자 1칸 = 1 m</small></h3><canvas id="w3"></canvas></div>
+    <div style="display:grid;gap:12px;min-width:0">
+      <div class="card"><h3><span class="c">카메라 1 이미지</span> <small>· 광선 위 깊이 가설이 모두 같은 픽셀</small></h3><canvas id="s3a"></canvas></div>
+      <div class="card"><h3><span class="c2">카메라 2 이미지</span> <small>· 가설이 한 줄로 늘어섬 (2D 이미지에서는 에피폴라 선)</small></h3><canvas id="s3b"></canvas></div>
+      <div class="card"><h3>파라미터</h3><div class="defwrap" id="def3"></div></div>
+      <div class="card knobs" aria-label="두 카메라 손잡이">
+        <label for="cand"><span class="p">깊이 가설</span><input id="cand" type="range" min="0.5" max="6" step="0.05"><output id="cando"></output></label>
+        <label for="bl">기준선 b<input id="bl" type="range" min="0" max="1.5" step="0.05"><output id="blo"></output></label>
+        <label for="qx"><span class="p">P_X</span><input id="qx" type="range" min="-2" max="1.5" step="0.1"><output id="qxo"></output></label>
+        <label for="qz"><span class="p">P_Z</span><input id="qz" type="range" min="1" max="6" step="0.1"><output id="qzo"></output></label>
+      </div>
+    </div>
+  </div>
+  <div class="problem">
+    <b>문제: 깊이를 구하려면 카메라 2 이미지에서 대응점을 찾아야 한다.</b>
+    <span>텍스처 없는 면에서는 매칭이 어렵고, 카메라 2의 [R | t]를 모르면 에피폴라 선도 그릴 수 없다 → ④ 특징점 검출 · 매칭</span>
+  </div>
+</section>
+<!-- ④ feature detection + matching -->
+<section class="step" id="feat">
+  <h2><span class="num">④</span>특징점 검출 · 매칭 — 다시 찾기 쉬운 점을 고르고, 가장 닮은 점과 짝짓는다</h2>
+  <h3 class="sub">1. 검출: 창을 어느 방향으로 밀어도 모습이 달라지는 점 = 코너 (Harris · SIFT는 같은 목적을 DoG로)</h3>
+  <div class="quad">
+    <div class="card"><h3>이미지 1 <small>· 세 점에 창(30×30 픽셀)을 놓음</small></h3><canvas id="qimg"></canvas></div>
+    <div class="card case" style="--cc:var(--flat)"><h3>평면 <b>✗ 위치를 못 정함</b></h3><canvas id="qc-flat"></canvas><p class="eq" id="qr-flat"></p></div>
+    <div class="card case" style="--cc:var(--x)"><h3>엣지 <b>△ 경계를 따라 미끄러짐</b></h3><canvas id="qc-edge"></canvas><p class="eq" id="qr-edge"></p></div>
+    <div class="card case" style="--cc:var(--p)"><h3>코너 <b>✓ 한 점으로 정해짐</b></h3><canvas id="qc-corner"></canvas><p class="eq" id="qr-corner"></p></div>
+  </div>
+  <p class="note">각 칸 왼쪽 = 창 주변 확대 (이미지 그대로). 오른쪽 = 창 밀기 지도 E(u, v): 이미지 밝기가 아니라, 창을 가로·세로 ±12 픽셀 밀었을 때 원래 창과의 차이다. <b>옅음 = 밀어도 비슷함, 진함 = 밀면 달라짐</b>, 가운데 칸 = 밀지 않음(차이 0). 코너는 가운데만 옅다 = 어느 방향으로 밀어도 달라진다.</p>
+  <h3 class="sub">2. 매칭: 디스크립터 거리 1등이 2등보다 확실히 가까울 때만 짝 (d_1 / d_2 &lt; 0.75)</h3>
+  <div class="card"><h3>이미지 1 → 이미지 2 <small>· <span class="p">1등</span> · 2등 후보</small></h3><canvas id="pairm"></canvas>
+    <div class="presets" style="margin-top:8px;align-items:center"><span class="eq" id="mres" style="margin-right:12px"></span><button type="button" id="m-acc">통과한 예</button><button type="button" id="m-rej">버린 예</button><button type="button" id="m-next">다음 예</button></div></div>
+  <div class="problem">
+    <b>문제: 대응점은 얻었지만, 두 카메라의 [R | t]를 모르면 에피폴라 선을 그릴 수 없고 깊이도 구할 수 없다.</b>
+    <span>대응점만으로 두 카메라의 관계(기본 행렬 F)를 거꾸로 구한다 → ⑤ 8점 알고리즘</span>
+  </div>
+</section>
+<!-- ④ correspondence + 8-point -->
+<section class="step" id="fm">
+  <h2><span class="num">⑤</span>8점 알고리즘 — 대응점 8쌍 이상으로 기본 행렬 F 추정</h2>
+  <div class="card"><h3>이미지 1 <small>(DTU scan 114, 시점 13)</small> · 이미지 2 <small>(시점 32, 시점 차이 25.9°) · 선 = 대응점 쌍 (<span class="p">초록 정상</span>, <span style="color:var(--bad);font-weight:600">빨강 틀림</span>) · <span class="i">보라 = 추정 F의 에피폴라 선</span>, 흰 점선 = 기준 F · 왼쪽 이미지를 누르면 점 선택</small></h3><canvas id="pair"></canvas></div>
+  <div class="grid2">
+    <div class="card"><h3>패치 비교 <small>· 선택한 대응점 주변 41×41 픽셀 확대</small></h3><canvas id="patch"></canvas>
+      <p class="note">같은 3D 점 주변의 밝기 무늬. 시점이 바뀌어 조금 돌고 늘어나도 닮았다. SIFT는 이 무늬를 크기·회전에 덜 민감한 128차원 디스크립터(descriptor)로 바꿔 매칭한다.</p></div>
+    <div class="card"><h3>파라미터</h3><div class="defwrap" id="def4"></div><div class="bars" id="bars4"></div></div>
+  </div>
+  <div class="card knobs" aria-label="8점 알고리즘 손잡이">
+    <label for="nfm">사용할 대응점 수 N<input id="nfm" type="range" min="8" max="60" step="1"><output id="nfmo"></output></label>
+    <label for="bad1"><span>틀린 대응점 1개 섞기</span><input id="bad1" type="checkbox" style="width:auto;justify-self:start"><output></output></label>
+    <div class="presets"><button type="button" id="resample">대응점 다시 뽑기</button></div>
+    <p class="note">자료: DTU MVS 2014 (Aanæs et al., IJCV 2016). 대응점 = SIFT 매칭 624쌍. 기준 F = DTU 보정 카메라로 계산한 F. 정상/틀린 대응점은 기준 F에서 2 픽셀 기준으로 나눔.</p>
+  </div>
+  <div class="problem">
+    <b>문제: 실제 특징점 매칭 결과에는 틀린 대응점이 섞인다 (이 이미지 쌍에서 SIFT 624쌍 중 13.1%).</b>
+    <span>틀린 대응점이 하나만 섞여도 8점 알고리즘의 F가 크게 어긋난다 (8쌍 기준 평균 에피폴라 거리 3.1 → 20.8 픽셀, 200회 중앙값) → ⑥ RANSAC (예정)</span>
+  </div>
+</section>
+<div class="pager"><button type="button" id="pgPrev">← 이전</button><span id="pgNum">1 / 3</span><button type="button" id="pgNext" class="go">다음 →</button></div>
+</div>
+
+<script src="data/numeric.min.js"></script>
+<script src="data/dtu_pair.js"></script>
+<script src="data/feat.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const tok=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const r2=v=>Math.abs(v)<0.005?0:v;
+const f2=v=>{v=r2(v);return (v<0?'−':'')+Math.abs(v).toFixed(2)};
+const f1=v=>{v=Math.abs(v)<0.05?0:v;return (v<0?'−':'')+Math.abs(v).toFixed(1)};
+const fp=v=>r2(v)<0?'('+f2(v)+')':f2(v);
+const mat=(rows,cls)=>`<span class="mat"><table>${rows.map((r,i)=>`<tr class="${cls?cls[i]||'':''}">${r.map(v=>`<td>${typeof v==='number'?f2(v):v}</td>`).join('')}</tr>`).join('')}</table></span>`;
+const CX=320,WIDTH=640;
+
+/* drawing helpers */
+function setup(cv,ratio,view){const dpr=window.devicePixelRatio||1,w=cv.clientWidth||300,h=Math.round(w*ratio);
+  if(cv.width!==Math.round(w*dpr)||cv.height!==Math.round(h*dpr)){cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);cv.style.height=h+'px'}
+  const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+  if(view){const sc=Math.min(w/(view.xmax-view.xmin),h/(view.zmax-view.zmin)),ox=(w-sc*(view.xmax-view.xmin))/2,oz=(h-sc*(view.zmax-view.zmin))/2;
+    view.to=(x,z)=>[ox+(x-view.xmin)*sc,h-oz-(z-view.zmin)*sc];view.from=(X,Y)=>[(X-ox)/sc+view.xmin,(h-oz-Y)/sc+view.zmin]}
+  return {ctx,w,h}}
+function L(ctx,v,a,b,col,wd=1.5,dash){ctx.save();ctx.strokeStyle=col;ctx.lineWidth=wd;if(dash)ctx.setLineDash(dash);ctx.beginPath();ctx.moveTo(...v.to(...a));ctx.lineTo(...v.to(...b));ctx.stroke();ctx.restore()}
+function A(ctx,v,a,b,col,wd=2.2){L(ctx,v,a,b,col,wd);const p=v.to(...a),q=v.to(...b),g=Math.atan2(q[1]-p[1],q[0]-p[0]),k=8;ctx.save();ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(...q);ctx.lineTo(q[0]-k*Math.cos(g-.4),q[1]-k*Math.sin(g-.4));ctx.lineTo(q[0]-k*Math.cos(g+.4),q[1]-k*Math.sin(g+.4));ctx.closePath();ctx.fill();ctx.restore()}
+function T(ctx,v,p,s,col,dx=6,dy=-6,bold,align){const q=v.to(...p);ctx.save();ctx.fillStyle=col;ctx.font=`${bold?'600 ':''}12.5px ${tok('--sans')}`;if(align)ctx.textAlign=align;ctx.fillText(s,q[0]+dx,q[1]+dy);ctx.restore()}
+function P(ctx,v,p,col,r=6,al=1){const q=v.to(...p);ctx.save();ctx.globalAlpha=al;ctx.fillStyle=col;ctx.beginPath();ctx.arc(q[0],q[1],r,0,7);ctx.fill();ctx.restore()}
+function grid(ctx,v,col){for(let i=-8;i<=10;i++){L(ctx,v,[i,-8],[i,10],col,1);L(ctx,v,[-8,i],[10,i],col,1)}}
+function cam(ctx,v,C,right,fwd,col,fov=true){
+  if(fov){const h=35*Math.PI/180,ca=Math.cos(h),sa=Math.sin(h),Ln=12,d1=[fwd[0]*ca+right[0]*sa,fwd[1]*ca+right[1]*sa],d2=[fwd[0]*ca-right[0]*sa,fwd[1]*ca-right[1]*sa];
+    ctx.save();ctx.fillStyle=tok('--fov');ctx.beginPath();ctx.moveTo(...v.to(...C));ctx.lineTo(...v.to(C[0]+d1[0]*Ln,C[1]+d1[1]*Ln));ctx.lineTo(...v.to(C[0]+d2[0]*Ln,C[1]+d2[1]*Ln));ctx.closePath();ctx.fill();ctx.restore()}
+  const b=.2,p1=[C[0]-fwd[0]*b+right[0]*b,C[1]-fwd[1]*b+right[1]*b],p2=[C[0]-fwd[0]*b-right[0]*b,C[1]-fwd[1]*b-right[1]*b];
+  ctx.save();ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(...v.to(...C));ctx.lineTo(...v.to(...p1));ctx.lineTo(...v.to(...p2));ctx.closePath();ctx.fill();ctx.restore()}
+function strip(cv,dots){const {ctx,w,h}=setup(cv,.17),pad=16,y0=20,bh=h-y0-24,px=p=>pad+(p/WIDTH)*(w-2*pad),im=tok('--img'),mut=tok('--muted');
+  ctx.fillStyle=tok('--grid');ctx.fillRect(px(0),y0,px(WIDTH)-px(0),bh);ctx.strokeStyle=im;ctx.lineWidth=1.5;ctx.strokeRect(px(0),y0,px(WIDTH)-px(0),bh);
+  ctx.font=`11.5px ${tok('--mono')}`;ctx.fillStyle=mut;ctx.textAlign='center';[0,160,320,480,640].forEach(p=>ctx.fillText(String(p),px(p),y0+bh+15));
+  ctx.setLineDash([3,3]);ctx.strokeStyle=mut;ctx.beginPath();ctx.moveTo(px(CX),y0);ctx.lineTo(px(CX),y0+bh);ctx.stroke();ctx.setLineDash([]);ctx.fillText('c_x = 320',px(CX),13);
+  let out=false;dots.forEach(d=>{if(d.u<0||d.u>WIDTH){out=true;return}ctx.save();ctx.globalAlpha=d.al??1;ctx.beginPath();ctx.arc(px(d.u),y0+bh/2,d.r||7,0,7);if(d.ring){ctx.strokeStyle=d.col;ctx.lineWidth=2.5;ctx.stroke()}else{ctx.fillStyle=d.col;ctx.fill()}ctx.restore()});
+  if(out&&dots.every(d=>d.u<0||d.u>WIDTH)){ctx.fillStyle=im;ctx.fillText('이미지 밖',w/2,y0+bh/2+4)}}
+
+/* ① R|t */
+const S1={px:4,pz:3,cx:1,cz:2,th:-90};
+const K1=['px','pz','cx','cz','th'];
+function sync1(){K1.forEach(k=>$(k).value=S1[k])}
+K1.forEach(k=>$(k).addEventListener('input',e=>{S1[k]=parseFloat(e.target.value);renderAll()}));
+const row=(sym,mean,val)=>`<tr><th>${sym}</th><td>${mean}</td><td class="val">${val}</td></tr>`;
+const W1={xmin:-1.5,xmax:5.5,zmin:-1.2,zmax:5.4},V1={xmin:-3.5,xmax:3.5,zmin:-1,zmax:5.6};
+function legs(ctx,v,C,r,fw,xc,zc){const X=[C[0]+r[0]*xc,C[1]+r[1]*xc],Z=[C[0]+fw[0]*zc,C[1]+fw[1]*zc],Pp=[X[0]+fw[0]*zc,X[1]+fw[1]*zc];
+  L(ctx,v,Pp,X,tok('--z'),1.1,[5,4]);L(ctx,v,Pp,Z,tok('--x'),1.1,[5,4]);L(ctx,v,C,X,tok('--x'),4.5);L(ctx,v,C,Z,tok('--z'),4.5);
+  T(ctx,v,[(C[0]+X[0])/2,(C[1]+X[1])/2],'x_c '+f2(xc),tok('--x'),-20,18,true);T(ctx,v,[(C[0]+Z[0])/2,(C[1]+Z[1])/2],'z_c '+f2(zc),tok('--z'),8,0,true)}
+function render1(){
+  K1.slice(0,4).forEach(k=>$(k+'o').textContent=f2(S1[k]));$('tho').textContent=S1.th+'°';
+  const t=S1.th*Math.PI/180,c=Math.cos(t),s=Math.sin(t),a=S1.px-S1.cx,b=S1.pz-S1.cz,xc=c*a+s*b,zc=-s*a+c*b;
+  const t1=-(c*S1.cx+s*S1.cz),t2=-(-s*S1.cx+c*S1.cz),r=[c,s],fw=[-s,c];
+  const mut=tok('--muted'),gr=tok('--grid'),cm=tok('--cam'),pc=tok('--p'),ink=tok('--ink');
+  let {ctx}=setup($('w1'),.86,W1);grid(ctx,W1,gr);
+  A(ctx,W1,[0,0],[1.1,0],mut,1.5);A(ctx,W1,[0,0],[0,1.1],mut,1.5);T(ctx,W1,[1.1,0],'X',mut,4,14);T(ctx,W1,[0,1.1],'Z',mut,6,0);
+  cam(ctx,W1,[S1.cx,S1.cz],r,fw,cm);legs(ctx,W1,[S1.cx,S1.cz],r,fw,xc,zc);
+  A(ctx,W1,[S1.cx,S1.cz],[S1.cx+r[0],S1.cz+r[1]],tok('--x'));A(ctx,W1,[S1.cx,S1.cz],[S1.cx+fw[0],S1.cz+fw[1]],tok('--z'));
+  L(ctx,W1,[S1.cx,S1.cz],[S1.px,S1.pz],ink,1);P(ctx,W1,[S1.px,S1.pz],pc,7);T(ctx,W1,[S1.px,S1.pz],`P (${f1(S1.px)}, ${f1(S1.pz)})`,pc,9,-8,true);
+  T(ctx,W1,[S1.cx,S1.cz],`카메라 중심 C (${f1(S1.cx)}, ${f1(S1.cz)})`,cm,9,20,true);
+  const toC=(x,z)=>{const p=x-S1.cx,q=z-S1.cz;return [c*p+s*q,-s*p+c*q]};
+  ({ctx}=setup($('v1'),.86,V1));grid(ctx,V1,gr);
+  ctx.save();ctx.globalAlpha=.5;for(let i=-2;i<=7;i++){L(ctx,V1,toC(i,-2),toC(i,7),mut,.6,[2,4]);L(ctx,V1,toC(-2,i),toC(7,i),mut,.6,[2,4])}ctx.restore();
+  A(ctx,V1,toC(0,0),toC(1.1,0),mut,1.5);A(ctx,V1,toC(0,0),toC(0,1.1),mut,1.5);T(ctx,V1,toC(1.1,0),'X',mut,4,14);T(ctx,V1,toC(0,1.1),'Z',mut,6,0);T(ctx,V1,toC(0,0),'월드 원점',mut,-46,16);
+  cam(ctx,V1,[0,0],[1,0],[0,1],cm);legs(ctx,V1,[0,0],[1,0],[0,1],xc,zc);A(ctx,V1,[0,0],[1,0],tok('--x'));A(ctx,V1,[0,0],[0,1],tok('--z'));
+  P(ctx,V1,[xc,zc],pc,7);T(ctx,V1,[xc,zc],`P (${f2(xc)}, ${f2(zc)})`,pc,9,-8,true);T(ctx,V1,[0,0],'카메라',cm,-20,22,true);
+  $('def1').innerHTML=`<table class="def">
+   ${row('<span class="p">P</span>','3D 점 · 월드 좌표',mat([[S1.px],[S1.pz]]))}
+   ${row('<span class="c">C</span>','카메라 중심 · 월드 좌표계 기준 카메라 위치 (= −Rᵀ t)',mat([[S1.cx],[S1.cz]]))}
+   ${row('<span class="c">θ</span>','회전각 (반시계 +)',S1.th+'°')}
+   ${row('R','회전 행렬 (행: 카메라 x축, z축)',mat([[c,s],[-s,c]],['x','z']))}
+   ${row('t','이동 벡터 · 카메라 좌표계 기준 월드 원점 위치 (= −R C)',mat([[t1],[t2]]))}
+   ${row('<span class="x">x_c</span>, <span class="z">z_c</span>','3D 점 · 카메라 좌표 = R P + t',mat([[xc],[zc]],['x','z']))}
+  </table>`;
+}
+
+/* ② K */
+const S2={xc:-1,zc:3,f:500,k:1},W2={xmin:-3.4,xmax:3.4,zmin:-0.7,zmax:6.6},D=1.2;
+['xc','zc','f','k'].forEach(id=>{$(id).value=S2[id];$(id).addEventListener('input',e=>{S2[id]=parseFloat(e.target.value);renderAll()})});
+function render2(){
+  ['xc','zc'].forEach(k=>$(k+'o').textContent=f2(S2[k]));$('fo').textContent=S2.f;$('ko').textContent='×'+S2.k.toFixed(2);
+  const xc=S2.xc*S2.k,zc=S2.zc*S2.k,ra=xc/zc,u=S2.f*ra+CX,inside=u>=0&&u<=WIDTH,half=CX/S2.f;
+  const mut=tok('--muted'),ink=tok('--ink'),im=tok('--img'),pc=tok('--p');
+  const {ctx}=setup($('w2'),.93,W2);grid(ctx,W2,tok('--grid'));
+  ctx.save();ctx.fillStyle=tok('--fov');ctx.beginPath();ctx.moveTo(...W2.to(0,0));ctx.lineTo(...W2.to(-half*7,7));ctx.lineTo(...W2.to(half*7,7));ctx.closePath();ctx.fill();ctx.restore();
+  L(ctx,W2,[0,0],[-half*7,7],mut,1,[4,4]);L(ctx,W2,[0,0],[half*7,7],mut,1,[4,4]);
+  L(ctx,W2,[-half*D,D],[half*D,D],im,4);[0,320,640].forEach(p=>{const x=(p-CX)/S2.f*D;L(ctx,W2,[x,D-.06],[x,D+.06],im,1.5);T(ctx,W2,[x,D],String(p),im,0,-10,false,'center')});
+  T(ctx,W2,[-half*D,D],'이미지 평면',im,-8,16,true,'right');
+  [0.5,1,1.5,2].forEach(k=>{if(Math.abs(k-S2.k)>.02)P(ctx,W2,[S2.xc*k,S2.zc*k],pc,4,.25)});
+  const far=7/Math.max(zc,.01);L(ctx,W2,[0,0],[xc*far,zc*far],ink,1.1,[2,3]);L(ctx,W2,[0,0],[xc,zc],ink,1.5);
+  L(ctx,W2,[0,zc],[xc,zc],tok('--x'),4);L(ctx,W2,[0,0],[0,zc],tok('--z'),4);
+  T(ctx,W2,[xc/2,zc],'x_c '+f2(xc),tok('--x'),0,-8,true,'center');T(ctx,W2,[0,zc/2],'z_c '+f2(zc),tok('--z'),8,0,true);
+  P(ctx,W2,[ra*D,D],im,6);T(ctx,W2,[ra*D,D],inside?'u = '+f1(u):'이미지 밖',im,0,24,true,'center');
+  P(ctx,W2,[xc,zc],pc,7);T(ctx,W2,[xc,zc],'P',pc,9,-6,true);cam(ctx,W2,[0,0],[1,0],[0,1],tok('--cam'),false);T(ctx,W2,[0,-.2],'카메라 중심',tok('--cam'),0,16,true,'center');
+  strip($('s2'),[{u,col:pc}]);
+  $('def2').innerHTML=`<table class="def">
+   ${row('<span class="x">x_c</span>, <span class="z">z_c</span>','3D 점 · 카메라 좌표 (①의 결과)',mat([[xc],[zc]],['x','z']))}
+   ${row('f','초점거리 (픽셀)',S2.f)}
+   ${row('c_x','주점 (픽셀)',CX)}
+   ${row('<span class="i">u</span>','이미지 좌표 (픽셀) = f · x_c / z_c + c_x',`<span class="i">${inside?f1(u):'이미지 밖'}</span>`)}
+  </table>`;
+}
+
+/* ③ two cameras */
+const S3={b:.8,qx:-1,qz:3,cand:1.5},F3=500,W3={xmin:-3.2,xmax:2,zmin:-.8,zmax:6.6};
+const ID3={cand:'cand',bl:'b',qx:'qx',qz:'qz'};
+Object.entries(ID3).forEach(([id,k])=>{$(id).value=S3[k];$(id).addEventListener('input',e=>{S3[k]=parseFloat(e.target.value);renderAll()})});
+const uAt=(X,Z,cx0)=>F3*(X-cx0)/Z+CX;
+function ring(ctx,v,p,col,r=9){const q=v.to(...p);ctx.save();ctx.strokeStyle=col;ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(q[0],q[1],r,0,7);ctx.stroke();ctx.restore()}
+function render3(){
+  const {b,qx,qz,cand}=S3;
+  $('cando').textContent=f2(cand)+' m';$('blo').textContent=f2(b)+' m';$('qxo').textContent=f2(qx);$('qzo').textContent=f2(qz);
+  const c1=tok('--cam'),c2=tok('--cam2'),pc=tok('--p'),mut=tok('--muted'),ink=tok('--ink');
+  const C2=[-b,0],sl=qx/qz,cp=[sl*cand,cand];
+  const u1=uAt(qx,qz,0),u2=uAt(qx,qz,-b),uc=uAt(cp[0],cand,-b),d=u2-u1,ok=b>0&&d>1e-6,Z=ok?F3*b/d:NaN,match=Math.abs(uc-u2)<2.5;
+  const {ctx}=setup($('w3'),1.0,W3);grid(ctx,W3,tok('--grid'));
+  L(ctx,W3,[0,0],[sl*6.6,6.6],c1,1.6);
+  [1,2,3,4,5,6].forEach(z=>P(ctx,W3,[sl*z,z],pc,3.5,.3));
+  L(ctx,W3,C2,cp,c2,1.2,[4,4]);L(ctx,W3,C2,[qx,qz],c2,2);
+  P(ctx,W3,[qx,qz],pc,7);T(ctx,W3,[qx,qz],'P',pc,10,-6,true);
+  ring(ctx,W3,cp,pc);T(ctx,W3,cp,match?'일치':'가설',pc,12,14,true);
+  cam(ctx,W3,[0,0],[1,0],[0,1],c1,false);cam(ctx,W3,C2,[1,0],[0,1],c2,false);
+  T(ctx,W3,[0,0],'카메라 1',c1,14,4,true);T(ctx,W3,C2,'카메라 2',c2,-14,b>0?4:-14,true,'right');
+  if(b>0){L(ctx,W3,[-b,-.55],[0,-.55],ink,1.2);T(ctx,W3,[-b/2,-.55],'b = '+f2(b)+' m',ink,0,18,false,'center')}
+  else T(ctx,W3,[0,-.55],'b = 0: 두 광선이 겹침',ink,0,18,true,'center');
+  strip($('s3a'),[{u:u1,col:pc},{u:u1,col:pc,ring:true,r:11}]);
+  strip($('s3b'),[.75,1.5,2.25,3,3.75,4.5,5.25,6].map(z=>({u:uAt(sl*z,z,-b),col:pc,al:.25,r:5})).concat([{u:u2,col:pc},{u:uc,col:pc,ring:true,r:11}]));
+  $('def3').innerHTML=`<table class="def">
+   ${row('b','기준선 (두 카메라 중심 사이 거리)',f2(b)+' m')}
+   ${row('f','초점거리 (픽셀)',F3)}
+   ${row('u_1','카메라 1 이미지 좌표',f1(u1))}
+   ${row('u_2','카메라 2 이미지 좌표',f1(u2))}
+   ${row('d','시차 = u_2 − u_1',f1(d))}
+   ${row('Z','깊이 = f · b / d',ok?f2(Z)+' m':'정의 안 됨 (b = 0)')}
+   ${row('ΔZ','깊이 불확실성 (시차 1 픽셀 오차) ≈ Z² / (f · b)',ok?f2(Z*Z/(F3*b))+' m':'—')}
+  </table>`;
+}
+
+/* ④ correspondence + 8-point */
+const DP=window.DTU_PAIR,IMG=[new Image(),new Image()];IMG[0].src='data/dtu_view_1.jpg';IMG[1].src='data/dtu_view_2.jpg';IMG.forEach(im=>im.onload=()=>renderAll());
+const GI=[],BI=[];DP.good.forEach((g,i)=>(g?GI:BI).push(i));
+const S4={n:8,bad:false,seed:1,sel:null};
+let rng=1;const rnd=()=>{rng=(rng*1103515245+12345)%2147483648;return rng/2147483648};
+function sample(){rng=S4.seed*7919+S4.n;const pool=GI.slice(),out=[];for(let k=0;k<S4.n;k++){const j=Math.floor(rnd()*pool.length);out.push(pool.splice(j,1)[0])}
+  if(S4.bad)out[out.length-1]=BI[Math.floor(rnd()*BI.length)];return out}
+function norm2(P){const n=P.length;let mx=0,my=0;P.forEach(q=>{mx+=q[0];my+=q[1]});mx/=n;my/=n;let md=0;P.forEach(q=>md+=Math.hypot(q[0]-mx,q[1]-my));const s=Math.SQRT2/(md/n);
+  return {T:[[s,0,-s*mx],[0,s,-s*my],[0,0,1]],q:P.map(q=>[s*(q[0]-mx),s*(q[1]-my)])}}
+function eightPoint(pa,pb){const A=norm2(pa),B=norm2(pb);
+  const M=A.q.map((a,i)=>{const b=B.q[i];return [b[0]*a[0],b[0]*a[1],b[0],b[1]*a[0],b[1]*a[1],b[1],a[0],a[1],1]});
+  const sv=numeric.svd(numeric.dot(numeric.transpose(M),M));const k=sv.S.indexOf(Math.min(...sv.S));const f=sv.V.map(r=>r[k]);
+  let Fn=[[f[0],f[1],f[2]],[f[3],f[4],f[5]],[f[6],f[7],f[8]]];const s3=numeric.svd(Fn),Sg=s3.S.slice();Sg[Sg.indexOf(Math.min(...Sg))]=0;
+  Fn=numeric.dot(numeric.dot(s3.U,numeric.diag(Sg)),numeric.transpose(s3.V));return unitF(numeric.dot(numeric.dot(numeric.transpose(B.T),Fn),A.T))}
+function unitF(F){const n=Math.hypot(...F.flat());const sg=F[2][2]<0?-1:1;return F.map(r=>r.map(v=>sg*v/n))}
+const lineOf=(F,a)=>[F[0][0]*a[0]+F[0][1]*a[1]+F[0][2],F[1][0]*a[0]+F[1][1]*a[1]+F[1][2],F[2][0]*a[0]+F[2][1]*a[1]+F[2][2]];
+const epiDist=(F,a,b)=>{const l=lineOf(F,a);return Math.abs(l[0]*b[0]+l[1]*b[1]+l[2])/Math.hypot(l[0],l[1])};
+const meanErr=F=>GI.reduce((s,i)=>s+epiDist(F,DP.a[i],DP.b[i]),0)/GI.length;
+const FG=unitF(DP.F),ERR_G=meanErr(FG);
+function epiSeg(l){const W=DP.W,H=DP.H,P=[];
+  if(Math.abs(l[1])>1e-12){const y0=-l[2]/l[1],y1=-(l[0]*W+l[2])/l[1];P.push([0,y0],[W,y1])}else{const x=-l[2]/l[0];P.push([x,0],[x,H])}return P}
+function dotI(ctx,x,y,col,r=5,ringOnly){ctx.save();ctx.beginPath();ctx.arc(x,y,r,0,7);if(ringOnly){ctx.strokeStyle=col;ctx.lineWidth=2.5;ctx.stroke()}else{ctx.fillStyle=col;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke()}ctx.restore()}
+$('nfm').value=S4.n;$('nfm').addEventListener('input',e=>{S4.n=parseInt(e.target.value);S4.sel=null;renderAll()});
+$('bad1').addEventListener('change',e=>{S4.bad=e.target.checked;renderAll()});
+$('resample').onclick=()=>{S4.seed++;S4.sel=null;renderAll()};
+const GAP=10;
+$('pair').addEventListener('click',e=>{const r=$('pair').getBoundingClientRect(),k=(r.width-GAP)/2/DP.W,x=(e.clientX-r.left)/k,y=(e.clientY-r.top)/k;if(x>DP.W)return;
+  let best=null,bd=1e9;GI.forEach(i=>{const d=Math.hypot(DP.a[i][0]-x,DP.a[i][1]-y);if(d<bd){bd=d;best=i}});S4.sel=best;renderAll()});
+function render4(){
+  if(!$('fm')||$('fm').hidden)return;
+  $('nfmo').textContent=S4.n+(S4.bad?' (틀린 1개 포함)':'');
+  const idx=sample(),F=eightPoint(idx.map(i=>DP.a[i]),idx.map(i=>DP.b[i])),E=meanErr(F);
+  const inS=new Set(idx);const sel=S4.sel??GI.find((g,n)=>n>=Math.floor(GI.length*0.37)&&!inS.has(g)),sa=DP.a[sel],sb=DP.b[sel],used=inS.has(sel);
+  const acc=tok('--img'),pc=tok('--p'),bad=tok('--bad');
+  // pair canvas
+  const {ctx,w,h}=setup($('pair'),(DP.H/DP.W)*0.5+0.004),iw=(w-GAP)/2,k=iw/DP.W,ox=iw+GAP;
+  [0,1].forEach(j=>{const im=IMG[j],x0=j?ox:0;if(im.complete&&im.naturalWidth)ctx.drawImage(im,x0,0,iw,DP.H*k);else{ctx.fillStyle=tok('--grid');ctx.fillRect(x0,0,iw,DP.H*k)}});
+  ctx.save();ctx.beginPath();ctx.rect(ox,0,iw,DP.H*k);ctx.clip();
+  idx.forEach(i=>{const P=epiSeg(lineOf(F,DP.a[i]));ctx.strokeStyle=acc;ctx.globalAlpha=.55;ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(ox+P[0][0]*k,P[0][1]*k);ctx.lineTo(ox+P[1][0]*k,P[1][1]*k);ctx.stroke()});
+  ctx.globalAlpha=1;let P=epiSeg(lineOf(FG,sa));ctx.strokeStyle='#ffffff';ctx.lineWidth=2.5;ctx.setLineDash([6,5]);ctx.beginPath();ctx.moveTo(ox+P[0][0]*k,P[0][1]*k);ctx.lineTo(ox+P[1][0]*k,P[1][1]*k);ctx.stroke();ctx.setLineDash([]);
+  P=epiSeg(lineOf(F,sa));ctx.strokeStyle=acc;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(ox+P[0][0]*k,P[0][1]*k);ctx.lineTo(ox+P[1][0]*k,P[1][1]*k);ctx.stroke();ctx.restore();
+  idx.forEach((i,n)=>{const g=DP.good[i],col=g?pc:bad,a=DP.a[i],b=DP.b[i];
+    ctx.save();ctx.strokeStyle=col;ctx.globalAlpha=g?.75:1;ctx.lineWidth=g?1.4:2.4;ctx.beginPath();ctx.moveTo(a[0]*k,a[1]*k);ctx.lineTo(ox+b[0]*k,b[1]*k);ctx.stroke();ctx.restore();
+    dotI(ctx,a[0]*k,a[1]*k,col,4.5);dotI(ctx,ox+b[0]*k,b[1]*k,col,4.5);
+    if(S4.n<=20){ctx.save();ctx.font=`600 12px ${tok('--sans')}`;ctx.fillStyle='#fff';ctx.strokeStyle='rgba(0,0,0,.6)';ctx.lineWidth=3;[[a[0]*k,a[1]*k],[ox+b[0]*k,b[1]*k]].forEach(q=>{ctx.strokeText(String(n+1),q[0]+6,q[1]-6);ctx.fillText(String(n+1),q[0]+6,q[1]-6)});ctx.restore()}});
+  dotI(ctx,sa[0]*k,sa[1]*k,acc,10,true);dotI(ctx,ox+sb[0]*k,sb[1]*k,acc,10,true);
+  // patches
+  const pt=setup($('patch'),0.5),side=(pt.w-GAP)/2,R=20;pt.ctx.imageSmoothingEnabled=false;
+  [[0,sa],[1,sb]].forEach(([j,q])=>{const x0=j?side+GAP:0,im=IMG[j];if(im.complete&&im.naturalWidth)pt.ctx.drawImage(im,q[0]-R,q[1]-R,2*R+1,2*R+1,x0,0,side,side);
+    pt.ctx.strokeStyle=acc;pt.ctx.lineWidth=1.5;pt.ctx.strokeRect(x0+side/2-side/(2*R+1)*2,side/2-side/(2*R+1)*2,side/(2*R+1)*4,side/(2*R+1)*4);
+    pt.ctx.fillStyle='#fff';pt.ctx.strokeStyle='rgba(0,0,0,.6)';pt.ctx.lineWidth=3;pt.ctx.font=`600 13px ${tok('--sans')}`;const t=j?'이미지 2 · x_2':'이미지 1 · x_1';pt.ctx.strokeText(t,x0+8,18);pt.ctx.fillText(t,x0+8,18)});
+  // epipole in image 2 (left null vector of F)
+  const sv=numeric.svd(F),kk=sv.S.indexOf(Math.min(...sv.S)),e2=sv.U.map(r=>r[kk]),ex=e2[0]/e2[2],ey=e2[1]/e2[2],inside=ex>=0&&ex<=DP.W&&ey>=0&&ey<=DP.H;
+  $('def4').innerHTML=`<table class="def">
+   ${row('N','8점 알고리즘에 쓴 대응점 수',S4.n+(S4.bad?' (틀린 1)':''))}
+   ${row('x_1 → x_2','선택한 대응점 (픽셀)',`(${sa[0].toFixed(0)}, ${sa[1].toFixed(0)}) → (${sb[0].toFixed(0)}, ${sb[1].toFixed(0)})`)}
+   ${row('',used?'x_2와 추정 에피폴라 선 사이 거리 (F 계산에 쓴 점이라 0에 가까운 것이 당연)':'x_2와 추정 에피폴라 선 사이 거리 (F 계산에 안 쓴 점)',epiDist(F,sa,sb).toFixed(2)+' 픽셀')}
+   ${row('e_2','에피폴 · 에피폴라 선들이 모이는 점 (이미지 2)',`(${ex.toFixed(0)}, ${ey.toFixed(0)})${inside?'':' · 이미지 밖'}`)}
+  </table>`;
+  const MAX=25,bar=(lab,v,col)=>`<div class="bar"><span>${lab}</span><div class="track"><div class="fillb" style="width:${Math.min(v/MAX,1)*100}%;background:${col}"></div></div><output>${v.toFixed(2)} px</output></div>`;
+  $('bars4').innerHTML=`<p class="note" style="margin:0">평균 에피폴라 거리 (정상 대응점 ${GI.length}쌍, 막대 끝 = ${MAX} 픽셀)</p>`+bar('기준 F (DTU 보정값)',ERR_G,tok('--muted'))+bar('8점 알고리즘 추정 F',E,S4.bad?bad:acc);
+}
+
+/* ④ feature detection + matching */
+const FT=window.FEAT,S5={sel:null,top:true,mode:'acc',k:0};let HG=null;
+function harrisPrep(){if(HG||!(IMG[0].complete&&IMG[0].naturalWidth))return;
+  const w=800,h=600,c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.drawImage(IMG[0],0,0,w,h);
+  let px;try{px=x.getImageData(0,0,w,h).data}catch(e){HG={err:true};return}
+  const g=new Float32Array(w*h);for(let i=0;i<w*h;i++)g[i]=0.299*px[4*i]+0.587*px[4*i+1]+0.114*px[4*i+2];
+  const Ix=new Float32Array(w*h),Iy=new Float32Array(w*h);
+  for(let y=1;y<h-1;y++)for(let q=1;q<w-1;q++){const i=y*w+q;
+    Ix[i]=((g[i-w+1]+2*g[i+1]+g[i+w+1])-(g[i-w-1]+2*g[i-1]+g[i+w-1]))/8;Iy[i]=((g[i+w-1]+2*g[i+w]+g[i+w+1])-(g[i-w-1]+2*g[i-w]+g[i-w+1]))/8}
+  const W1=w+1,integ=f=>{const I=new Float64Array(W1*(h+1));for(let y=0;y<h;y++){let r=0;for(let q=0;q<w;q++){r+=f(y*w+q);I[(y+1)*W1+q+1]=I[y*W1+q+1]+r}}return I};
+  const Jxx=integ(i=>Ix[i]*Ix[i]),Jyy=integ(i=>Iy[i]*Iy[i]),Jxy=integ(i=>Ix[i]*Iy[i]),H=7;
+  const box=(J,q,y)=>J[(y+H+1)*W1+q+H+1]-J[(y-H)*W1+q+H+1]-J[(y+H+1)*W1+q-H]+J[(y-H)*W1+q-H];
+  const l1=new Float32Array(w*h),l2=new Float32Array(w*h),R=new Float32Array(w*h);
+  for(let y=H+1;y<h-H-1;y++)for(let q=H+1;q<w-H-1;q++){const a=box(Jxx,q,y),b=box(Jyy,q,y),cxy=box(Jxy,q,y),tr=a+b,det=a*b-cxy*cxy,dd=Math.sqrt(Math.max(tr*tr/4-det,0)),i=y*w+q;l1[i]=tr/2+dd;l2[i]=tr/2-dd;R[i]=det-0.05*tr*tr}
+  const smp=[];for(let y=20;y<h-20;y+=3)for(let q=20;q<w-20;q+=3)smp.push(l1[y*w+q]);smp.sort((p,q)=>p-q);const T=smp[Math.floor(smp.length*.95)];
+  const cand=[];for(let y=20;y<h-20;y++)for(let q=20;q<w-20;q++){const i=y*w+q,v=R[i];if(v<=0)continue;let mx=true;for(let dy=-2;dy<=2&&mx;dy++)for(let dx=-2;dx<=2;dx++)if(R[i+dy*w+dx]>v){mx=false;break}if(mx)cand.push([v,q,y])}
+  cand.sort((p,q)=>q[0]-p[0]);const top=[];for(const cc of cand){if(top.length>=200)break;if(top.every(t=>Math.hypot(t[0]-cc[1],t[1]-cc[2])>12))top.push([cc[1],cc[2]])}
+  HG={w,h,g,l1,l2,R,T,top}}
+const kindOf=(a,b,T)=>a<0.05*T?'평면':b<0.05*a?'엣지':b>0.1*T?'코너':'약한 코너';
+const EXL=()=>S5.mode==='acc'?[0,FT.nex_acc]:[FT.nex_acc,FT.ex.length];
+(function(){const [a,b]=EXL();for(let i=a;i<b;i++){const e=FT.ex[i],r=e[6]/e[7];if(e[8]&&r>.5&&r<.6){S5.k=i-a;break}}})();
+$('m-acc').onclick=()=>{S5.mode='acc';S5.k=0;renderAll()};$('m-rej').onclick=()=>{S5.mode='rej';S5.k=0;renderAll()};
+$('m-next').onclick=()=>{const [a,b]=EXL();S5.k=(S5.k+1)%(b-a);renderAll()};
+function renderFeat(){
+  if(!$('feat')||$('feat').hidden)return;harrisPrep();
+  const acc=tok('--img'),pc=tok('--p'),bad=tok('--bad'),mut=tok('--muted'),ink=tok('--ink');
+  const CASES=[['flat','--flat'],['edge','--x'],['corner','--p']];
+  let {ctx,w,h}=setup($('qimg'),DP.H/DP.W);let k=w/DP.W;
+  if(IMG[0].complete&&IMG[0].naturalWidth)ctx.drawImage(IMG[0],0,0,w,h);
+  const NAME={flat:'평면',edge:'엣지',corner:'코너'};
+  CASES.forEach(([n,c])=>{const q=FT.presets[n],col=tok(c);ctx.save();ctx.strokeStyle=col;ctx.lineWidth=3.5;ctx.strokeRect(q[0]*k-15*k,q[1]*k-15*k,30*k,30*k);
+    ctx.font=`700 14px ${tok('--sans')}`;ctx.fillStyle=col;ctx.strokeStyle='rgba(0,0,0,.7)';ctx.lineWidth=3.5;const tx=q[0]*k+15*k+6,ty=q[1]*k+5;ctx.strokeText(NAME[n],tx,ty);ctx.fillText(NAME[n],tx,ty);ctx.restore()});
+  const N=6,E0=225*15*15;
+  CASES.forEach(([n,c])=>{const q=FT.presets[n],col=tok(c),cv=setup($('qc-'+n),.5),sd=(cv.w-GAP)/2,cx2=cv.ctx;
+    const Z=30;cx2.imageSmoothingEnabled=false;if(IMG[0].complete&&IMG[0].naturalWidth)cx2.drawImage(IMG[0],q[0]-Z,q[1]-Z,2*Z+1,2*Z+1,0,0,sd,sd);
+    const sc=sd/(2*Z+1);cx2.strokeStyle=col;cx2.lineWidth=3;cx2.strokeRect((Z-15)*sc,(Z-15)*sc,30*sc,30*sc);
+    if(HG&&!HG.err){const G=HG.g,Wd=HG.w,hx=Math.round(q[0]/2),hy=Math.round(q[1]/2),cell=sd/(2*N+1);
+      for(let v=-N;v<=N;v++)for(let u=-N;u<=N;u++){let sm=0;for(let dy=-7;dy<=7;dy++)for(let dx=-7;dx<=7;dx++){const i=(hy+dy)*Wd+hx+dx,dd=G[i+v*Wd+u]-G[i];sm+=dd*dd}
+        const t=sm/(sm+E0);cx2.fillStyle=`hsl(272,62%,${94-64*t}%)`;cx2.fillRect(sd+GAP+(u+N)*cell,(v+N)*cell,cell+.5,cell+.5)}
+      cx2.strokeStyle=tok('--ink');cx2.lineWidth=1.5;cx2.strokeRect(sd+GAP+N*cell,N*cell,cell,cell);
+      const i=hy*Wd+hx,a=HG.l1[i],b=HG.l2[i],T=HG.T;
+      $('qr-'+n).innerHTML=`λ_1 = ${(a/T).toFixed(2)} T, λ_2 = ${(b/T).toFixed(3)} T → 판정 <b style="color:${col}">${kindOf(a,b,T)}</b>`}
+    else $('qr-'+n).textContent=HG&&HG.err?'이 환경에서는 이미지 픽셀을 읽을 수 없음 (링크로 열면 동작)':'이미지 불러오는 중';
+    [['확대 61×61 픽셀',0],['창 밀기 지도',sd+GAP]].forEach(([t,x0])=>{cx2.font=`600 12px ${tok('--sans')}`;cx2.fillStyle='#fff';cx2.strokeStyle='rgba(0,0,0,.65)';cx2.lineWidth=3;cx2.strokeText(t,x0+6,16);cx2.fillText(t,x0+6,16)})});
+  // matching
+  const [a0]=EXL(),e=FT.ex[a0+S5.k],qa=[e[0],e[1]],b1=[e[2],e[3]],b2=[e[4],e[5]],ratio=e[6]/e[7],pass=ratio<.75,okm=!!e[8];
+  ['m-acc','m-rej'].forEach(id=>$(id).setAttribute('aria-pressed',(id==='m-acc')===(S5.mode==='acc')?'true':'false'));
+  ({ctx,w,h}=setup($('pairm'),(DP.H/DP.W)*0.5+0.004));const iw=(w-GAP)/2;k=iw/DP.W;const ox2=iw+GAP;
+  [0,1].forEach(j=>{const im=IMG[j],x0=j?ox2:0;if(im.complete&&im.naturalWidth)ctx.drawImage(im,x0,0,iw,DP.H*k)});
+  const c1=pass?(okm?pc:bad):mut;
+  ctx.save();ctx.strokeStyle=mut;ctx.setLineDash([5,5]);ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(qa[0]*k,qa[1]*k);ctx.lineTo(ox2+b2[0]*k,b2[1]*k);ctx.stroke();ctx.restore();
+  ctx.save();ctx.strokeStyle=c1;ctx.lineWidth=2.5;if(!pass)ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(qa[0]*k,qa[1]*k);ctx.lineTo(ox2+b1[0]*k,b1[1]*k);ctx.stroke();ctx.restore();
+  dotI(ctx,qa[0]*k,qa[1]*k,acc,9,true);dotI(ctx,ox2+b1[0]*k,b1[1]*k,c1,9,true);dotI(ctx,ox2+b2[0]*k,b2[1]*k,mut,9,true);
+  ctx.save();ctx.font=`600 13px ${tok('--sans')}`;ctx.fillStyle='#fff';ctx.strokeStyle='rgba(0,0,0,.65)';ctx.lineWidth=3;
+  [[qa[0]*k,qa[1]*k,'x_1'],[ox2+b1[0]*k,b1[1]*k,'1등'],[ox2+b2[0]*k,b2[1]*k,'2등']].forEach(t=>{ctx.strokeText(t[2],t[0]+12,t[1]-10);ctx.fillText(t[2],t[0]+12,t[1]-10)});ctx.restore();
+  $('mres').innerHTML=`d_1 = ${e[6].toFixed(0)}, d_2 = ${e[7].toFixed(0)} → ${ratio.toFixed(2)} · <b class="i">${pass?'통과':'버림'}</b> · ${okm?'실제로 맞는 짝':'<span style="color:var(--bad);font-weight:600">실제로 틀린 짝</span>'}`;
+}
+
+function renderAll(){render1();render2();render3();renderFeat();render4()}
+new ResizeObserver(()=>renderAll()).observe(document.body);
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',renderAll);
+new MutationObserver(renderAll).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+/* pages: one step at a time */
+const PAGES=['rt','k','ep','feat','fm'];let cur=0;
+function show(i,push){cur=Math.max(0,Math.min(PAGES.length-1,i));
+  PAGES.forEach((id,j)=>{$(id).hidden=j!==cur});
+  document.querySelectorAll('.flow a').forEach((a,j)=>{if(j===cur)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
+  $('pgPrev').disabled=cur===0;$('pgNext').disabled=cur===PAGES.length-1;$('pgNum').textContent=(cur+1)+' / '+PAGES.length;
+  if(push&&location.hash!=='#'+PAGES[cur])location.hash=PAGES[cur];
+  renderAll();window.scrollTo({top:0})}
+document.querySelectorAll('.flow a').forEach((a,j)=>a.addEventListener('click',e=>{e.preventDefault();show(j,true)}));
+$('pgPrev').onclick=()=>show(cur-1,true);$('pgNext').onclick=()=>show(cur+1,true);
+addEventListener('hashchange',()=>{const j=PAGES.indexOf(location.hash.slice(1));if(j>=0&&j!==cur)show(j)});
+addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.key==='ArrowRight')show(cur+1,true);if(e.key==='ArrowLeft')show(cur-1,true)});
+sync1();show(Math.max(0,PAGES.indexOf(location.hash.slice(1))));
+</script>
