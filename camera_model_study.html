@@ -215,6 +215,11 @@ table.def td.val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-
     <div class="arrow">→</div>
     <div class="card later"><b>그다음 · 깊이 구하기 <small>(MVS, 뒤 단계)</small></b><span>F로 에피폴라 선을 그린다 → 나머지 192만 픽셀의 짝을 선 위에서만 찾는다</span></div>
   </div>
+  <div class="card"><h3>F가 하는 일 <small>· 이미지 1의 점 → 이미지 2의 선</small></h3>
+    <div class="eq big"><span class="i">선</span> <span class="mat"><table><tr><td>a</td></tr><tr><td>b</td></tr><tr><td>c</td></tr></table></span> = F <span class="mat"><table><tr><td>f11</td><td>f12</td><td>f13</td></tr><tr><td>f21</td><td>f22</td><td>f23</td></tr><tr><td>f31</td><td>f32</td><td>f33</td></tr></table></span> × <span class="p">점 x_1</span> <span class="mat"><table><tr><td>u_1</td></tr><tr><td>v_1</td></tr><tr><td>1</td></tr></table></span></div>
+    <div class="eq">짝 x_2 = (u_2, v_2)는 이 선 위에 있다: a · u_2 + b · v_2 + c = 0 → 짝 1쌍 = 식 1개</div>
+    <div class="eq">9칸 중 1칸은 배율 (F를 2배 해도 같은 선) → 모르는 칸 8개 → 짝 8쌍</div>
+  </div>
   <h3 class="sub">2. 실제 사진: [R | t]를 모르므로 대응점 8쌍으로 F를 구하고, F로 에피폴라 선을 그린다 (F x_1 = 이미지 2의 선)</h3>
   <div class="card"><h3>이미지 1 <small>(DTU scan 114, 시점 13)</small> · 이미지 2 <small>(시점 32, 시점 차이 25.9°) · <span class="p">초록 = F 계산에 쓴 대응점</span> (<span style="color:var(--bad);font-weight:600">빨강 = 틀린 짝</span>) · <span class="i">보라 = 선택한 점의 에피폴라 선 (추정 F)</span>, 흰 점선 = 기준 F · 이미지 1을 누르면 점 선택</small></h3><canvas id="pair"></canvas></div>
   <div class="grid2">
