@@ -74,6 +74,15 @@ h3.sub{margin:4px 0 0;font-size:1.02rem}
 .knobs .presets{align-self:center}
 .knobs .note{grid-column:1/-1}
 #fm .knobs{grid-template-columns:1fr;align-content:start}
+.pipe{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center}
+.pipe .s{display:grid;border:1px solid var(--line);border-radius:8px;padding:5px 10px;background:var(--soft);font-size:.88rem;line-height:1.35}
+.pipe .s small{color:var(--muted)}
+.pipe .ar{color:var(--muted)}
+.keep{margin:0;padding-left:1.2em;display:grid;gap:4px;font-size:.92rem}
+table.sumt td{vertical-align:top}
+@media (max-width:820px){table.sumt,table.sumt tbody,table.sumt tr,table.sumt th,table.sumt td{display:block;width:auto}
+  table.sumt tr:first-child{display:none}table.sumt tr{border-top:1px solid var(--line);padding:6px 0}table.sumt tr:nth-child(2){border-top:0}
+  table.sumt th,table.sumt td{border:0!important;padding:1px 0}}
 .two-step{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:stretch}
 .two-step .card{display:grid;gap:4px;align-content:start}
 .two-step .card span{color:var(--muted);font-size:.92rem}
@@ -115,8 +124,9 @@ table.def td.val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-
     <a href="#k">② 내부 파라미터 K &nbsp;카메라 → 이미지</a><span>→</span>
     <a href="#ep">③ 삼각측량 · 스테레오</a><span>→</span>
     <a href="#feat">④ 특징점 검출 · 매칭</a><span>→</span>
-    <a href="#fm">⑤ 8점 알고리즘</a><span>→</span>
-    <span class="next-chip">⑥ RANSAC (예정)</span>
+    <a href="#fm">⑤ 8점 알고리즘 · RANSAC</a><span>→</span>
+    <a href="#sum">⑥ 정리</a><span>→</span>
+    <span class="next-chip">SfM (예정)</span>
   </nav>
 </header>
 
@@ -207,7 +217,7 @@ table.def td.val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-
 </section>
 <!-- ④ correspondence + 8-point -->
 <section class="step" id="fm">
-  <h2><span class="num">⑤</span>8점 알고리즘 — 대응점 8쌍 이상으로 기본 행렬 F 추정</h2>
+  <h2><span class="num">⑤</span>8점 알고리즘 · RANSAC — 대응점으로 기본 행렬 F 추정, 틀린 짝은 투표로 거름</h2>
   <h3 class="sub">1. 에피폴라 선: 이미지 1의 점 하나 = 광선 하나 → 이미지 2에서는 선 하나</h3>
   <div class="card"><h3>개념도</h3><img src="data/epipolar_line.png" alt="이미지 1의 점 x_1 하나에 깊이 Z = 1, 2, 3, 4가 모두 찍히고, 이미지 2에서는 그 점들이 한 직선(에피폴라 선) 위에 놓인 그림" style="display:block;width:100%;height:auto;background:#fff;border-radius:6px"></div>
   <div class="two-step" aria-label="에피폴라 선을 쓰는 순서">
@@ -221,7 +231,7 @@ table.def td.val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-
     <div class="eq">9칸 중 1칸은 배율 (F를 2배 해도 같은 선) → 모르는 칸 8개 → 짝 8쌍</div>
   </div>
   <h3 class="sub">2. 실제 사진: [R | t]를 모르므로 대응점 8쌍으로 F를 구하고, F로 에피폴라 선을 그린다 (F x_1 = 이미지 2의 선)</h3>
-  <div class="card"><h3>이미지 1 <small>(DTU scan 114, 시점 13)</small> · 이미지 2 <small>(시점 32, 시점 차이 25.9°) · <span class="p">초록 = F 계산에 쓴 대응점</span> (<span style="color:var(--bad);font-weight:600">빨강 = 틀린 짝</span>) · <span class="i">보라 = 선택한 점의 에피폴라 선 (추정 F)</span>, 흰 점선 = 기준 F · 이미지 1을 누르면 점 선택</small></h3><canvas id="pair"></canvas></div>
+  <div class="card"><h3>이미지 1 <small>(DTU scan 114, 시점 13)</small> · 이미지 2 <small>(시점 32, 시점 차이 25.9°) · <span class="p">초록 선 = 짝 표시 (F 계산에 쓴 대응점)</span> (<span style="color:var(--bad);font-weight:600">빨강 = 틀린 짝</span>) · <span class="i">보라 = 선택한 점의 에피폴라 선 (추정 F)</span>, 흰 점선 = 기준 F · 이미지 1을 누르면 점 선택</small></h3><canvas id="pair"></canvas></div>
   <div class="grid2">
     <div class="card"><h3>파라미터</h3><div class="defwrap" id="def4"></div><div class="bars" id="bars4"></div></div>
     <div class="card knobs" aria-label="8점 알고리즘 손잡이">
@@ -231,9 +241,43 @@ table.def td.val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-
       <p class="note">자료: DTU MVS 2014 (Aanæs et al., IJCV 2016). 대응점 = SIFT 매칭 624쌍. 기준 F = DTU 보정 카메라로 계산한 F. 정상/틀린 대응점은 기준 F에서 2 픽셀 기준으로 나눔.</p>
     </div>
   </div>
+  <p class="bridge">틀린 짝이 하나만 섞여도 F가 크게 어긋난다 (8쌍 기준 평균 에피폴라 거리 3.1 → 20.8 픽셀, 200회 중앙값). 실제 매칭 624쌍에는 틀린 짝이 13.1% 섞여 있다.</p>
+  <h3 class="sub">3. RANSAC: 무작위 8쌍으로 F → 624쌍이 투표 → 여러 번 반복해 찬성이 가장 많은 F를 고른다</h3>
+  <div class="card"><h3>찬성 · 반대 <small>· <span class="p">초록 점 = 찬성 (그 F의 에피폴라 선에서 2 픽셀 안)</span>, 회색 점 = 반대 · 고리 = 뽑은 8쌍 (흰색 정상, <span style="color:var(--bad);font-weight:600">빨강 틀린 짝</span>)</small></h3><canvas id="rsc"></canvas>
+    <div class="presets" style="margin-top:8px;align-items:center"><button type="button" id="r-one">한 번 뽑기</button><button type="button" id="r-100">100번 반복</button><button type="button" id="r-new">처음부터</button><span class="eq" id="r-res" style="margin-left:8px"></span></div></div>
+  <div class="grid2">
+    <div class="card"><h3>찬성 수</h3><div class="bars" id="r-bars" style="margin-top:0"></div></div>
+    <div class="card"><h3>F에서 R | t 꺼내기 <small>· K 벗기기: E = K_2ᵀ F K_1 → R, t 후보 4개 → 점이 두 카메라 앞에 오는 1개</small></h3><div class="defwrap" id="r-def"></div></div>
+  </div>
   <div class="problem">
-    <b>문제: 실제 특징점 매칭 결과에는 틀린 대응점이 섞인다 (이 이미지 쌍에서 SIFT 624쌍 중 13.1%).</b>
-    <span>틀린 대응점이 하나만 섞여도 8점 알고리즘의 F가 크게 어긋난다 (8쌍 기준 평균 에피폴라 거리 3.1 → 20.8 픽셀, 200회 중앙값) → ⑥ RANSAC (예정)</span>
+    <b>문제: 두 장으로 얻는 것은 R | t (이동은 방향만)와 실제 길이를 모르는 깊이다.</b>
+    <span>사진이 여러 장이면 모든 카메라와 점을 한 좌표계에 모아야 한다 → SfM (예정) · 지금까지의 정리 → ⑥</span>
+  </div>
+</section>
+<!-- ⑥ summary -->
+<section class="step" id="sum">
+  <h2><span class="num">⑥</span>정리 — 사진 두 장에서 카메라 자세와 깊이까지</h2>
+  <div class="card"><h3>순서 <small>· DTU scan 114 사진 두 장으로 이 페이지에서 계산한 값</small></h3><div class="pipe" id="pipe"></div></div>
+  <div class="card"><h3>쪽별 요약</h3><div class="defwrap"><table class="def sumt">
+    <tr><th>쪽</th><td><b>질문</b></td><td><b>방법 · 핵심 식</b></td><td><b>알아낸 것</b></td></tr>
+    <tr><th>① [R | t]</th><td>월드의 점은 카메라에서 보면 어디인가</td><td>회전 · 이동: x_c = R P + t, 카메라 중심 C = −Rᵀ t</td><td>카메라 좌표</td></tr>
+    <tr><th>② K</th><td>카메라 좌표는 몇 번째 픽셀인가</td><td>원근 투영: u = f · x_c / z_c + c_x</td><td>픽셀 좌표 (깊이는 사라짐)</td></tr>
+    <tr><th>③ 삼각측량</th><td>사라진 깊이를 되찾으려면</td><td>두 광선의 교점: Z = f · b / d</td><td>깊이 (두 카메라의 [R | t]를 알 때)</td></tr>
+    <tr><th>④ 특징점</th><td>두 사진에서 같은 점은 어디인가</td><td>코너 검출 + 디스크립터 매칭: d_1 / d_2 &lt; 0.75</td><td>대응점 624쌍 (틀린 짝 13.1%)</td></tr>
+    <tr><th>⑤ 8점 · RANSAC</th><td>[R | t]를 모르면</td><td>대응점으로 F: x_2ᵀ F x_1 = 0, 무작위 8쌍 + 투표</td><td>F → E → R, t (이동은 방향만)</td></tr>
+  </table></div></div>
+  <div class="card"><h3>문답에서 확인한 것</h3><ul class="keep">
+    <li>t는 카메라 위치가 아니다. 카메라 위치는 C = −Rᵀ t</li>
+    <li>사진 한 장으로는 깊이를 모른다. 같은 광선 위의 점은 모두 같은 픽셀</li>
+    <li>기준선 b가 넓을수록 깊이가 정밀하다. ΔZ ≈ Z² / (f · b)</li>
+    <li>짝은 에피폴라 선 위에 있다. 찾을 범위가 이미지 전체에서 선 하나로 줄어든다</li>
+    <li>F는 3×3 (점 3칸 → 선 3칸). 1칸은 배율이라 짝 8쌍이면 풀린다</li>
+    <li>틀린 짝 하나에 F가 무너진다. RANSAC은 무작위 8쌍과 투표로 거른다</li>
+    <li>K를 벗기면 E에는 R, t만 남는다. 사진만으로는 실제 길이를 모른다</li>
+  </ul></div>
+  <div class="problem">
+    <b>다음: 사진이 여러 장이면 모든 카메라와 점을 한 좌표계에 모아야 한다 → SfM (예정)</b>
+    <span>그다음 모든 픽셀의 짝을 에피폴라 선 위에서 찾아 촘촘한 깊이를 만든다 → MVS (예정)</span>
   </div>
 </section>
 <div class="pager"><button type="button" id="pgPrev">← 이전</button><span id="pgNum">1 / 3</span><button type="button" id="pgNext" class="go">다음 →</button></div>
@@ -242,6 +286,7 @@ table.def td.val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-
 <script src="data/numeric.min.js"></script>
 <script src="data/dtu_pair.js"></script>
 <script src="data/feat.js"></script>
+<script src="data/dtu_cam.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 const tok=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -431,6 +476,64 @@ function render4(){
   $('bars4').innerHTML=`<p class="note" style="margin:0">평균 에피폴라 거리 (정상 대응점 ${GI.length}쌍, 막대 끝 = ${MAX} 픽셀)</p>`+bar('기준 F (DTU 보정값)',ERR_G,tok('--muted'))+bar('8점 알고리즘 추정 F',E,S4.bad?bad:acc);
 }
 
+/* ⑤-3 RANSAC + F → R | t */
+const CAM=window.DTU_CAM,TH=2,ALL=DP.a.map((_,i)=>i),T3=numeric.transpose,D3=numeric.dot;
+const mb32=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+const det3=M=>M[0][0]*(M[1][1]*M[2][2]-M[1][2]*M[2][1])-M[0][1]*(M[1][0]*M[2][2]-M[1][2]*M[2][0])+M[0][2]*(M[1][0]*M[2][1]-M[1][1]*M[2][0]);
+const rotAng=Rm=>Math.acos(Math.max(-1,Math.min(1,(Rm[0][0]+Rm[1][1]+Rm[2][2]-1)/2)))*180/Math.PI;
+function svdSorted(A){const s=numeric.svd(A),o=s.S.map((_,i)=>i).sort((p,q)=>s.S[q]-s.S[p]);return {U:s.U.map(r=>o.map(j=>r[j])),S:o.map(j=>s.S[j]),V:s.V.map(r=>o.map(j=>r[j]))}}
+function triang(P1,P2,x1,x2){const A=[0,1].map(k=>P1[2].map((v,j)=>x1[k]*v-P1[k][j])).concat([0,1].map(k=>P2[2].map((v,j)=>x2[k]*v-P2[k][j])));
+  const V=svdSorted(A).V,X=V.map(r=>r[3]);return X.map(v=>v/X[3])}
+function decompose(F,I){const E=D3(D3(T3(CAM.K2),F),CAM.K1);let {U,V}=svdSorted(E);
+  if(det3(U)<0)U=U.map(r=>r.map(v=>-v));if(det3(V)<0)V=V.map(r=>r.map(v=>-v));
+  const W=[[0,-1,0],[1,0,0],[0,0,1]],u3=U.map(r=>r[2]),P1=CAM.K1.map(r=>r.concat([0])),cands=[];
+  [D3(D3(U,W),T3(V)),D3(D3(U,T3(W)),T3(V))].forEach(Rc=>[u3,u3.map(v=>-v)].forEach(tc=>{
+    const P2=D3(CAM.K2,Rc.map((r,i)=>r.concat([tc[i]])));let n=0;
+    I.slice(0,50).forEach(i=>{const X=triang(P1,P2,DP.a[i],DP.b[i]),z2=Rc[2][0]*X[0]+Rc[2][1]*X[1]+Rc[2][2]*X[2]+tc[2];if(X[2]>0&&z2>0)n++});
+    cands.push({R:Rc,t:tc,n})}));
+  const best=cands.reduce((p,q)=>q.n>p.n?q:p),tn=Math.hypot(...CAM.t),dt=best.t.reduce((s,v,i)=>s+v*CAM.t[i],0)/tn;
+  return {cands,ang:rotAng(best.R),terr:Math.acos(Math.min(1,Math.abs(dt)))*180/Math.PI,nUsed:Math.min(50,I.length)}}
+function trial(rand){const pool=ALL.slice(),s=[];for(let k=0;k<8;k++)s.push(pool.splice(Math.floor(rand()*pool.length),1)[0]);
+  const F=eightPoint(s.map(i=>DP.a[i]),s.map(i=>DP.b[i])),inl=ALL.map(i=>epiDist(F,DP.a[i],DP.b[i])<TH);
+  return {s,F,inl,n:inl.filter(Boolean).length,bad:s.filter(i=>!DP.good[i]).length}}
+function refit(t){let I=ALL.filter(i=>t.inl[i]);if(I.length<8)I=t.s;const F=eightPoint(I.map(i=>DP.a[i]),I.map(i=>DP.b[i]));return {F,I,err:meanErr(F),pose:decompose(F,I)}}
+const newRun=seed=>({seed,rand:mb32(seed),it:0,cur:null,best:null,fit:null,view:'cur'});
+function stepRun(R){const t=trial(R.rand);t.k=++R.it;R.cur=t;if(!R.best||t.n>R.best.n){R.best=t;R.fit=null}}
+let SR=newRun(3);stepRun(SR);
+const SUM=newRun(5);for(let i=0;i<100;i++)stepRun(SUM);SUM.fit=refit(SUM.best);
+const ANG_G=rotAng(CAM.R);
+$('r-one').onclick=()=>{stepRun(SR);SR.view='cur';renderAll()};
+$('r-100').onclick=()=>{for(let i=0;i<100;i++)stepRun(SR);SR.view='best';renderAll()};
+$('r-new').onclick=()=>{SR=newRun(SR.seed+1);stepRun(SR);renderAll()};
+function renderR(){
+  if(!$('fm')||$('fm').hidden)return;
+  const R=SR,t=R.view==='best'?R.best:R.cur;if(!R.fit)R.fit=refit(R.best);
+  const pc=tok('--p'),bad=tok('--bad');
+  const {ctx,w}=setup($('rsc'),(DP.H/DP.W)*0.5+0.004),iw=(w-GAP)/2,k=iw/DP.W,ox=iw+GAP;
+  [0,1].forEach(j=>{const im=IMG[j],x0=j?ox:0;if(im.complete&&im.naturalWidth)ctx.drawImage(im,x0,0,iw,DP.H*k);ctx.fillStyle='rgba(0,0,0,.4)';ctx.fillRect(x0,0,iw,DP.H*k)});
+  ALL.forEach(i=>{const on=t.inl[i];ctx.fillStyle=on?pc:'#c9ced6';ctx.globalAlpha=on?1:.75;[[DP.a[i],0],[DP.b[i],ox]].forEach(([q,x0])=>{ctx.beginPath();ctx.arc(x0+q[0]*k,q[1]*k,on?3:2.2,0,7);ctx.fill()})});ctx.globalAlpha=1;
+  t.s.forEach(i=>{const col=DP.good[i]?'#ffffff':bad,a=DP.a[i],b=DP.b[i];ctx.save();ctx.strokeStyle=col;ctx.lineWidth=DP.good[i]?1.3:2.6;ctx.beginPath();ctx.moveTo(a[0]*k,a[1]*k);ctx.lineTo(ox+b[0]*k,b[1]*k);ctx.stroke();ctx.restore();dotI(ctx,a[0]*k,a[1]*k,col,8,true);dotI(ctx,ox+b[0]*k,b[1]*k,col,8,true)});
+  $('r-res').innerHTML=R.view==='best'?`${R.it}번 시도 중 찬성이 가장 많은 시도 = ${t.k}번째 · 찬성 ${t.n}쌍 · 뽑은 8쌍 중 틀린 짝 ${t.bad}개`
+    :`${t.k}번째 시도 · 뽑은 8쌍 중 틀린 짝 <b style="color:${t.bad?bad:pc}">${t.bad}개</b> → 찬성 ${t.n}쌍`;
+  const bar=(lab,v,col)=>`<div class="bar"><span>${lab}</span><div class="track"><div class="fillb" style="width:${v/ALL.length*100}%;background:${col}"></div></div><output>${v} / ${ALL.length}</output></div>`;
+  $('r-bars').innerHTML=bar('이번 시도',R.cur.n,R.cur.bad?bad:pc)+bar(`최고 (${R.it}번 중)`,R.best.n,pc)
+    +`<p class="note" style="margin:0">정상 짝은 ${GI.length}쌍이다. 뽑은 8쌍이 모두 정상이면 찬성이 많고, 틀린 짝이 하나라도 섞이면 적다. 8쌍이 모두 정상일 확률은 한 번에 0.869⁸ ≈ 33%다.</p>`;
+  const f=R.fit,p=f.pose;
+  $('r-def').innerHTML=`<table class="def">
+   ${row('F',`최고 시도에 찬성한 ${f.I.length}쌍으로 다시 구한 F · 평균 에피폴라 거리`,`${f.err.toFixed(2)} px (기준 F ${ERR_G.toFixed(2)})`)}
+   ${row('후보',`R, t 후보 4개 · 두 카메라 앞에 온 점 (${p.nUsed}점 중)`,p.cands.map(c=>c.n).join(' · '))}
+   ${row('R','회전각 (DTU 보정값 '+ANG_G.toFixed(1)+'°)',p.ang.toFixed(1)+'°')}
+   ${row('t','이동 방향 · DTU 보정값과의 각도 차이 (길이는 모름)',p.terr.toFixed(1)+'°')}
+  </table>`;
+}
+function renderSum(){
+  if(!$('sum')||$('sum').hidden)return;
+  const f=SUM.fit,p=f.pose,S=[['사진 2장','DTU scan 114, 시점 13 · 32'],['④ 특징점 검출',`${FT.nkp[0]} · ${FT.nkp[1]}개`],['④ 매칭',`${FT.nacc}쌍 · 틀린 짝 ${FT.acc_bad_pct}%`],
+    ['⑤ RANSAC',`100번 시도 · 최고 찬성 ${SUM.best.n}쌍`],['⑤ 8점 알고리즘',`찬성 ${f.I.length}쌍으로 F · 오차 ${f.err.toFixed(2)} px`],['K 벗기기','E = K_2ᵀ F K_1'],
+    ['R, t',`회전 ${p.ang.toFixed(1)}° (DTU ${ANG_G.toFixed(1)}°) · 이동은 방향만 (차이 ${p.terr.toFixed(1)}°)`],['③ 삼각측량','깊이 (실제 길이는 모름)']];
+  $('pipe').innerHTML=S.map(([a,b])=>`<span class="s"><b>${a}</b><small>${b}</small></span>`).join('<span class="ar">→</span>');
+}
+
 /* ④ feature detection + matching */
 const FT=window.FEAT,S5={sel:null,top:true,mode:'acc',k:0};let HG=null;
 function harrisPrep(){if(HG||!(IMG[0].complete&&IMG[0].naturalWidth))return;
@@ -489,12 +592,12 @@ function renderFeat(){
   $('mres').innerHTML=`d_1 = ${e[6].toFixed(0)}, d_2 = ${e[7].toFixed(0)} → ${ratio.toFixed(2)} · <b class="i">${pass?'통과':'버림'}</b> · ${okm?'실제로 맞는 짝':'<span style="color:var(--bad);font-weight:600">실제로 틀린 짝</span>'}`;
 }
 
-function renderAll(){render1();render2();render3();renderFeat();render4()}
+function renderAll(){render1();render2();render3();renderFeat();render4();renderR();renderSum()}
 new ResizeObserver(()=>renderAll()).observe(document.body);
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',renderAll);
 new MutationObserver(renderAll).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
 /* pages: one step at a time */
-const PAGES=['rt','k','ep','feat','fm'];let cur=0;
+const PAGES=['rt','k','ep','feat','fm','sum'];let cur=0;
 function show(i,push){cur=Math.max(0,Math.min(PAGES.length-1,i));
   PAGES.forEach((id,j)=>{$(id).hidden=j!==cur});
   document.querySelectorAll('.flow a').forEach((a,j)=>{if(j===cur)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
