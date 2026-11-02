@@ -74,6 +74,14 @@ h3.sub{margin:4px 0 0;font-size:1.02rem}
 .knobs .presets{align-self:center}
 .knobs .note{grid-column:1/-1}
 #fm .knobs{grid-template-columns:1fr;align-content:start}
+.two-step{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:stretch}
+.two-step .card{display:grid;gap:4px;align-content:start}
+.two-step .card span{color:var(--muted);font-size:.92rem}
+.two-step .card b small{color:var(--muted);font-weight:400}
+.two-step .now{border:2px solid var(--ink)}
+.two-step .later{border-style:dashed}
+.two-step .arrow{align-self:center;font-size:1.4rem;color:var(--muted)}
+@media (max-width:820px){.two-step{grid-template-columns:1fr}.two-step .arrow{justify-self:center;transform:rotate(90deg)}}
 table.def{border-collapse:collapse;width:100%;font-size:.92rem}
 table.def th,table.def td{padding:7px 12px 7px 0;border-top:1px solid var(--line);vertical-align:middle;text-align:left}
 table.def tr:first-child th,table.def tr:first-child td{border-top:0}
@@ -202,6 +210,11 @@ table.def td.val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-
   <h2><span class="num">⑤</span>8점 알고리즘 — 대응점 8쌍 이상으로 기본 행렬 F 추정</h2>
   <h3 class="sub">1. 에피폴라 선: 이미지 1의 점 하나 = 광선 하나 → 이미지 2에서는 선 하나</h3>
   <div class="card"><h3>개념도</h3><img src="data/epipolar_line.png" alt="이미지 1의 점 x_1 하나에 깊이 Z = 1, 2, 3, 4가 모두 찍히고, 이미지 2에서는 그 점들이 한 직선(에피폴라 선) 위에 놓인 그림" style="display:block;width:100%;height:auto;background:#fff;border-radius:6px"></div>
+  <div class="two-step" aria-label="에피폴라 선을 쓰는 순서">
+    <div class="card now"><b>먼저 · 카메라 관계 구하기 <small>(이 쪽)</small></b><span>찾기 쉬운 코너 624쌍을 이미지 전체에서 찾는다 → 그중 8쌍 이상으로 F</span></div>
+    <div class="arrow">→</div>
+    <div class="card later"><b>그다음 · 깊이 구하기 <small>(MVS, 뒤 단계)</small></b><span>F로 에피폴라 선을 그린다 → 나머지 192만 픽셀의 짝을 선 위에서만 찾는다</span></div>
+  </div>
   <h3 class="sub">2. 실제 사진: [R | t]를 모르므로 대응점 8쌍으로 F를 구하고, F로 에피폴라 선을 그린다 (F x_1 = 이미지 2의 선)</h3>
   <div class="card"><h3>이미지 1 <small>(DTU scan 114, 시점 13)</small> · 이미지 2 <small>(시점 32, 시점 차이 25.9°) · <span class="p">초록 = F 계산에 쓴 대응점</span> (<span style="color:var(--bad);font-weight:600">빨강 = 틀린 짝</span>) · <span class="i">보라 = 선택한 점의 에피폴라 선 (추정 F)</span>, 흰 점선 = 기준 F · 이미지 1을 누르면 점 선택</small></h3><canvas id="pair"></canvas></div>
   <div class="grid2">
