@@ -250,8 +250,8 @@ table.def td.val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-
     <div class="card"><h3>F에서 R | t 꺼내기 <small>· K 벗기기: E = K_2ᵀ F K_1 → R, t 후보 4개 → 점이 두 카메라 앞에 오는 1개</small></h3><div class="defwrap" id="r-def"></div></div>
   </div>
   <div class="problem">
-    <b>문제: 두 장으로 얻는 것은 R | t (이동은 방향만)와 실제 길이를 모르는 깊이다.</b>
-    <span>사진이 여러 장이면 모든 카메라와 점을 한 좌표계에 모아야 한다 → SfM (예정) · 지금까지의 정리 → ⑥</span>
+    <b>문제: 사진 쌍마다 길이 단위가 달라서, 여러 장의 결과를 그대로 이어 붙일 수 없다.</b>
+    <span>두 장으로는 이동 방향만 알고 길이는 모른다 (깊이도 비율만 안다). 1–2 쌍의 간격 "1"과 2–3 쌍의 간격 "1"은 실제로 다른 길이다 → 모든 카메라를 한 좌표계 · 한 축척으로 → SfM (예정) · 지금까지의 정리 → ⑥</span>
   </div>
 </section>
 <!-- ⑥ summary -->
@@ -276,7 +276,7 @@ table.def td.val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-
     <li>K를 벗기면 E에는 R, t만 남는다. 사진만으로는 실제 길이를 모른다</li>
   </ul></div>
   <div class="problem">
-    <b>다음: 사진이 여러 장이면 모든 카메라와 점을 한 좌표계에 모아야 한다 → SfM (예정)</b>
+    <b>다음: 사진 쌍마다 길이 단위가 달라 그대로 이어 붙일 수 없다 → 모든 카메라를 한 좌표계 · 한 축척으로 → SfM (예정)</b>
     <span>그다음 모든 픽셀의 짝을 에피폴라 선 위에서 찾아 촘촘한 깊이를 만든다 → MVS (예정)</span>
   </div>
 </section>
