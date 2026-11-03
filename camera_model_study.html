@@ -113,6 +113,7 @@ table.def td.val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-
     <div class="eq">③ 스테레오 깊이 &nbsp; Z = f · b / d, &nbsp; d = u_2 − u_1 (시차) &nbsp;(평행 스테레오, 기준선 b)</div>
     <div class="eq">④ Harris 점수 &nbsp; R = det(M) − k · trace(M)², &nbsp; M = Σ<sub>창</sub> [[I_x², I_x I_y], [I_x I_y, I_y²]] &nbsp;· 비율 검사 d_1 / d_2 &lt; 0.75</div>
     <div class="eq">⑤ 에피폴라 제약 &nbsp; x_2ᵀ F x_1 = 0, &nbsp; F = K_2⁻ᵀ [t]ₓ R K_1⁻¹ &nbsp;(R, t: 카메라 1 → 2, [t]ₓ: t의 외적 행렬)</div>
+    <div class="eq">⑥ PnP &nbsp; 아는 3D 점 X ↔ 새 사진 픽셀 x → R, t, &nbsp; 번들 조정 &nbsp; 모든 사진의 재투영 오차 합 Σ ‖x − 투영(R, t, X)‖² 최소</div>
     <p class="note">3D: z_c · (u, v, 1)ᵀ = K [R | t] (X, Y, Z, 1)ᵀ, &nbsp; K = [[f, 0, c_x], [0, f, c_y], [0, 0, 1]]</p>
   </div>
   <nav class="flow" aria-label="흐름">
@@ -121,7 +122,8 @@ table.def td.val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-
     <a href="#ep">③ 삼각측량 · 스테레오</a><span>→</span>
     <a href="#feat">④ 특징점 검출 · 매칭</a><span>→</span>
     <a href="#fm">⑤ 8점 알고리즘 · RANSAC</a><span>→</span>
-    <span class="next-chip">SfM (예정)</span>
+    <a href="#sfm">⑥ SfM · MVS</a><span>→</span>
+    <span class="next-chip">⑦ 면 만들기 (예정)</span>
   </nav>
 </header>
 
@@ -218,7 +220,7 @@ table.def td.val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-
   <div class="two-step" aria-label="에피폴라 선을 쓰는 순서">
     <div class="card now"><b>먼저 · 카메라 관계 구하기 <small>(이 쪽)</small></b><span>찾기 쉬운 코너 624쌍을 이미지 전체에서 찾는다 → 그중 8쌍 이상으로 F</span></div>
     <div class="arrow">→</div>
-    <div class="card later"><b>그다음 · 깊이 구하기 <small>(MVS, 뒤 단계)</small></b><span>F로 에피폴라 선을 그린다 → 나머지 192만 픽셀의 짝을 선 위에서만 찾는다</span></div>
+    <div class="card later"><b>그다음 · 깊이 구하기 <small>(⑥ MVS)</small></b><span>F로 에피폴라 선을 그린다 → 나머지 192만 픽셀의 짝을 선 위에서만 찾는다</span></div>
   </div>
   <div class="card"><h3>F가 하는 일 <small>· 이미지 1의 점 → 이미지 2의 선</small></h3>
     <div class="eq big"><span class="i">선</span> <span class="mat"><table><tr><td>a</td></tr><tr><td>b</td></tr><tr><td>c</td></tr></table></span> = F <span class="mat"><table><tr><td>f11</td><td>f12</td><td>f13</td></tr><tr><td>f21</td><td>f22</td><td>f23</td></tr><tr><td>f31</td><td>f32</td><td>f33</td></tr></table></span> × <span class="p">점 x_1</span> <span class="mat"><table><tr><td>u_1</td></tr><tr><td>v_1</td></tr><tr><td>1</td></tr></table></span></div>
@@ -256,7 +258,45 @@ table.def td.val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-
   </div>
   <div class="problem">
     <b>문제: 사진 쌍마다 길이 단위가 달라서, 여러 장의 결과를 그대로 이어 붙일 수 없다.</b>
-    <span>두 장으로는 이동 방향만 알고 길이는 모른다 (깊이도 비율만 안다). 1–2 쌍의 간격 "1"과 2–3 쌍의 간격 "1"은 실제로 다른 길이다 → 모든 카메라를 한 좌표계 · 한 축척으로 → SfM (예정)</span>
+    <span>두 장으로는 이동 방향만 알고 길이는 모른다 (깊이도 비율만 안다). 1–2 쌍의 간격 "1"과 2–3 쌍의 간격 "1"은 실제로 다른 길이다 → 모든 카메라를 한 좌표계 · 한 축척으로 → ⑥ SfM · MVS</span>
+  </div>
+</section>
+<!-- ⑥ SfM + MVS -->
+<section class="step" id="sfm">
+  <h2><span class="num">⑥</span>SfM · MVS — 카메라 위치를 모두 구하고, 모든 픽셀의 깊이를 구한다</h2>
+  <h3 class="sub">1. SfM: 사진을 한 장씩 더하고 (PnP + 삼각측량), 마지막에 함께 다듬는다 (번들 조정)</h3>
+  <div class="grid2">
+    <div class="card"><h3>카메라와 점 <small>· DTU scan 114, 카메라 쪽에서 본 그림 · 삼각형 = 카메라 (<span class="c2">분홍 = 새 사진</span>), 회색 고리 = DTU 보정 위치 · <span class="x">주황 = PnP에 쓴 점 (이미 아는 3D 점)</span>, <span class="p">진한 초록 = 새로 생긴 점</span></small></h3><canvas id="sfmv"></canvas></div>
+    <div style="display:grid;gap:12px;min-width:0">
+      <div class="card"><h3>파라미터</h3><div class="defwrap" id="def6"></div></div>
+      <div class="card knobs" aria-label="SfM 손잡이">
+        <label for="k6">사진 수<input id="k6" type="range" min="2" max="12" step="1"><output id="k6o"></output></label>
+        <div class="presets"><button type="button" id="m6-raw">번들 조정 없이</button><button type="button" id="m6-ba">번들 조정 함</button></div>
+        <p class="note">자료: DTU 사진 12장으로 돌린 순차 SfM. 비교를 위해 마지막에 DTU 좌표계에 한 번 맞췄다 (축척 포함).</p>
+      </div>
+    </div>
+  </div>
+  <h3 class="sub">2. MVS: 픽셀마다 에피폴라 선 위를 따라가며 패치를 비교한다 → 가장 닮은 곳이 깊이</h3>
+  <div class="card"><h3>이미지 1 · 이미지 2 <small>· <span class="p">초록 고리 = 깊이 가설의 위치</span>, <span class="i">보라 = x_1의 에피폴라 선 (깊이 480–800 mm)</span></small></h3><canvas id="mvsp"></canvas>
+    <canvas id="mvsc" style="margin-top:8px"></canvas>
+    <div class="knobs" style="margin-top:8px">
+      <label for="z6"><span class="p">깊이 가설</span><input id="z6" type="range" min="0" max="640" step="1"><output id="z6o"></output></label>
+      <div class="presets"><button type="button" id="p6-0">무늬 있는 점</button><button type="button" id="p6-1">민무늬 점</button></div>
+    </div>
+    <p class="eq" id="mres6"></p></div>
+  <div class="card"><h3>모든 픽셀에 반복 = 깊이 지도 <small>· 시점 13 기준, 옆 사진 4장과 비교 · 회색 = 정하지 못함 (민무늬, 가려짐)</small></h3><canvas id="dmap"></canvas><p class="note" id="dnote"></p></div>
+  <h3 class="sub">3. 정리: 사진 N장 → 카메라 전부 · 픽셀마다 깊이</h3>
+  <div class="pipe" aria-label="단계 정리">
+    <span class="s"><b>사진 N장</b><small>DTU scan 114</small></span><span class="ar">→</span>
+    <span class="s"><b>특징점 · 매칭 ④</b><small>모든 사진 쌍</small></span><span class="ar">→</span>
+    <span class="s"><b>두 장으로 시작 ⑤</b><small>F → E → R, t</small></span><span class="ar">→</span>
+    <span class="s"><b>한 장씩 더하기</b><small>PnP → R, t, 삼각측량 ③ → 새 점</small></span><span class="ar">→</span>
+    <span class="s"><b>번들 조정</b><small>카메라 · 점 함께 다듬기</small></span><span class="ar">→</span>
+    <span class="s"><b>MVS</b><small>선 위 패치 비교 → 깊이 지도</small></span>
+  </div>
+  <div class="problem">
+    <b>문제: 깊이 지도는 사진마다 한 장씩 따로 있고, 구멍과 잡음이 있다.</b>
+    <span>여러 장의 깊이 지도를 하나의 면(mesh)으로 합쳐야 한다 → ⑦ 면 만들기 (예정)</span>
   </div>
 </section>
 <div class="pager"><button type="button" id="pgPrev">← 이전</button><span id="pgNum">1 / 3</span><button type="button" id="pgNext" class="go">다음 →</button></div>
@@ -266,6 +306,7 @@ table.def td.val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-
 <script src="data/dtu_pair.js"></script>
 <script src="data/feat.js"></script>
 <script src="data/dtu_cam.js"></script>
+<script src="data/sfm_mvs.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 const tok=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -505,6 +546,64 @@ function renderR(){
   </table>`;
 }
 
+/* ⑥ SfM · MVS */
+const SM=window.SFM_MVS,MV=SM.mvs,S6={k:5,mode:'ba',pre:0,zi:160};
+const DIMG=new Image();DIMG.src=SM.depth.png;DIMG.onload=()=>renderAll();
+const TURBO=['rgb(122,4,3)','rgb(239,90,17)','rgb(225,220,55)','rgb(70,247,131)','rgb(62,155,254)','rgb(48,18,59)'];
+$('k6').value=S6.k;$('k6').addEventListener('input',e=>{S6.k=+e.target.value;renderAll()});
+['raw','ba'].forEach(m=>$('m6-'+m).onclick=()=>{S6.mode=m;renderAll()});
+$('z6').max=MV.depths.length-1;$('z6').value=S6.zi;$('z6').addEventListener('input',e=>{S6.zi=+e.target.value;renderAll()});
+[0,1].forEach(i=>$('p6-'+i).onclick=()=>{S6.pre=i;renderAll()});
+function camTri(ctx,p,col,r,bold){const g=Math.atan2(-p[1],-p[0]);ctx.save();ctx.translate(p[0],p[1]);ctx.rotate(g);ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(r,0);ctx.lineTo(-r*.8,r*.75);ctx.lineTo(-r*.8,-r*.75);ctx.closePath();ctx.fill();if(bold){ctx.strokeStyle=tok('--ink');ctx.lineWidth=1.5;ctx.stroke()}ctx.restore()}
+function render6(){
+  if(!$('sfm')||$('sfm').hidden)return;
+  const s=S6.k-2,st=SM.sfm.steps[S6.mode][s],pv=s>0?SM.sfm.steps[S6.mode][s-1]:null,pc=tok('--p'),xc=tok('--x'),c1=tok('--cam'),c2=tok('--cam2'),mut=tok('--muted'),ink=tok('--ink'),im=tok('--img');
+  $('k6o').textContent=S6.k+'장';['raw','ba'].forEach(m=>$('m6-'+m).setAttribute('aria-pressed',S6.mode===m?'true':'false'));
+  // 1. SfM
+  const V={xmin:-430,xmax:540,zmin:-450,zmax:490};let {ctx}=setup($('sfmv'),.92,V);
+  const prevN=s>0?SM.sfm.npts_sample[s-1]:0,pnp=new Set(SM.sfm.pnp[s]);
+  st.p.forEach((q,i)=>{const isP=pnp.has(i),isN=s>0&&i>=prevN;if(!isP&&!isN)P(ctx,V,q,pc,1.5,.35)});
+  st.p.forEach((q,i)=>{const isP=pnp.has(i),isN=s>0&&i>=prevN;if(isP||isN)P(ctx,V,q,isP?xc:pc,2.3,1)});
+  SM.sfm.truth.slice(0,S6.k).forEach(q=>{const p=V.to(...q);ctx.save();ctx.strokeStyle=mut;ctx.lineWidth=1.3;ctx.beginPath();ctx.arc(p[0],p[1],11,0,7);ctx.stroke();ctx.restore()});
+  st.c.forEach((q,j)=>{const p=V.to(...q),isN=s>0&&j===S6.k-1;camTri(ctx,p,isN?c2:c1,isN?11:8,isN);ctx.save();ctx.font=`600 11.5px ${tok('--sans')}`;ctx.fillStyle=isN?c2:c1;ctx.fillText(String(j+1),p[0]+12,p[1]-8);ctx.restore()});
+  const nNew=s>0?st.n-pv.n:st.n;
+  $('def6').innerHTML=`<table class="def">
+   ${row('사진 수',s>0?`새 사진 = DTU 시점 ${SM.sfm.images[S6.k-1]}`:'첫 두 장 (시점 13, 32) · ⑤처럼 F → E → R, t',S6.k+'장')}
+   ${row('<span class="x">PnP</span>','새 사진에 보이는, 이미 3D 위치를 아는 점 → 새 카메라 R, t',s>0?SM.sfm.pnp_n[s]+'개':'—')}
+   ${row('<span class="p">삼각측량</span>','새로 생긴 점 (③)',nNew+'개')}
+   ${row('','재투영 오차',st.rms.toFixed(2)+' px')}
+   ${row('','카메라 위치 오차 (DTU 보정 위치와의 평균 거리)',st.err.toFixed(1)+' mm')}
+  </table>`;
+  // 2. MVS: 한 픽셀
+  const pr=MV.presets[S6.pre],zi=S6.zi,z=MV.depths[zi],nc=pr.ncc;let bi=0;nc.forEach((v,i)=>{if(v!=null&&v>(nc[bi]??-9))bi=i});
+  [0,1].forEach(i=>$('p6-'+i).setAttribute('aria-pressed',S6.pre===i?'true':'false'));$('z6o').textContent=z.toFixed(0)+' mm';
+  let w,iw,k,ox;({ctx,w}=setup($('mvsp'),(DP.H/DP.W)*0.5+0.004));iw=(w-GAP)/2;k=iw/DP.W;ox=iw+GAP;
+  [0,1].forEach(j=>{const I=IMG[j],x0=j?ox:0;if(I.complete&&I.naturalWidth)ctx.drawImage(I,x0,0,iw,DP.H*k)});
+  ctx.save();ctx.beginPath();ctx.rect(ox,0,iw,DP.H*k);ctx.clip();ctx.strokeStyle=im;ctx.lineWidth=2.5;ctx.beginPath();pr.x2.forEach((q,i)=>{const X=ox+q[0]*k,Y=q[1]*k;i?ctx.lineTo(X,Y):ctx.moveTo(X,Y)});ctx.stroke();
+  const qb=pr.x2[bi];dotI(ctx,ox+qb[0]*k,qb[1]*k,im,5);ctx.restore();
+  dotI(ctx,pr.x1[0]*k,pr.x1[1]*k,pc,11,true);const qz=pr.x2[zi];dotI(ctx,ox+qz[0]*k,qz[1]*k,pc,11,true);
+  // 패치 + 닮음 곡선
+  let h;({ctx,w,h}=setup($('mvsc'),w<640?1.05:.26));const R=Math.floor(MV.patch/2),ps=w<640?w*.3:Math.min(h-26,w*.13);
+  const crop=(j,q,x0)=>{const I=IMG[j];ctx.imageSmoothingEnabled=false;if(I.complete&&I.naturalWidth)ctx.drawImage(I,q[0]-R,q[1]-R,2*R+1,2*R+1,x0,18,ps,ps);ctx.strokeStyle=pc;ctx.lineWidth=2;ctx.strokeRect(x0,18,ps,ps)};
+  ctx.font=`600 12px ${tok('--sans')}`;ctx.fillStyle=ink;ctx.fillText('이미지 1 패치',0,12);ctx.fillText('이미지 2 패치 (가설)',ps+10,12);crop(0,pr.x1,0);crop(1,qz,ps+10);
+  const gx0=w<640?0:2*ps+40,gy0=w<640?ps+30:18,gw=w-gx0-8,gh=w<640?h-gy0-22:h-40,ymin=-.6,ymax=1,d0=MV.depths[0],d1=MV.depths[MV.depths.length-1];
+  const X=dz=>gx0+(dz-d0)/(d1-d0)*gw,Y=v=>gy0+(ymax-v)/(ymax-ymin)*gh;
+  ctx.strokeStyle=tok('--line');ctx.lineWidth=1;ctx.strokeRect(gx0,gy0,gw,gh);ctx.beginPath();ctx.moveTo(gx0,Y(0));ctx.lineTo(gx0+gw,Y(0));ctx.stroke();
+  ctx.font=`11px ${tok('--mono')}`;ctx.fillStyle=mut;ctx.textAlign='center';for(let dz=500;dz<=800;dz+=50)ctx.fillText(String(dz),X(dz),gy0+gh+14);
+  ctx.textAlign='left';ctx.fillText('닮음 (NCC)',gx0+4,gy0+12);ctx.textAlign='right';ctx.fillText('깊이 (mm)',gx0+gw-4,gy0+gh-6);ctx.textAlign='left';
+  if(pr.gt){ctx.save();ctx.setLineDash([4,4]);ctx.strokeStyle=mut;ctx.beginPath();ctx.moveTo(X(pr.gt),gy0);ctx.lineTo(X(pr.gt),gy0+gh);ctx.stroke();ctx.restore()}
+  ctx.strokeStyle=ink;ctx.lineWidth=1.4;ctx.beginPath();let pen=false;nc.forEach((v,i)=>{if(v==null){pen=false;return}const px=X(MV.depths[i]),py=Y(v);pen?ctx.lineTo(px,py):ctx.moveTo(px,py);pen=true});ctx.stroke();
+  ctx.strokeStyle=pc;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(X(z),gy0);ctx.lineTo(X(z),gy0+gh);ctx.stroke();
+  dotI(ctx,X(MV.depths[bi]),Y(nc[bi]),im,5);
+  $('mres6').innerHTML=`깊이 가설 ${z.toFixed(0)} mm → 닮음 ${nc[zi]==null?'—':nc[zi].toFixed(2)} · <b class="i">가장 닮은 깊이 ${MV.depths[bi].toFixed(0)} mm</b> · DTU 레이저 스캔 ${pr.gt.toFixed(0)} mm (점선) → ${Math.abs(MV.depths[bi]-pr.gt)<5?'맞음':'<span style="color:var(--bad);font-weight:600">틀림</span>'}`;
+  // 깊이 지도
+  const D=SM.depth,W6=$('dmap').clientWidth||300;({ctx,w}=setup($('dmap'),(((W6-GAP)/2)*D.h/D.w+42)/W6));iw=(w-GAP)/2;const hh=iw*D.h/D.w;
+  if(IMG[0].complete&&IMG[0].naturalWidth)ctx.drawImage(IMG[0],0,0,iw,hh);ctx.fillStyle=tok('--grid');ctx.fillRect(iw+GAP,0,iw,hh);if(DIMG.complete&&DIMG.naturalWidth)ctx.drawImage(DIMG,iw+GAP,0,iw,hh);
+  const gy=hh+12,gL=iw+GAP,gW=Math.min(iw,260),gr=ctx.createLinearGradient(gL,0,gL+gW,0);TURBO.forEach((c,i)=>gr.addColorStop(i/(TURBO.length-1),c));ctx.fillStyle=gr;ctx.fillRect(gL,gy,gW,10);
+  ctx.font=`11.5px ${tok('--sans')}`;ctx.fillStyle=mut;ctx.fillText(`가까움 ${D.dmin} mm`,gL,gy+24);ctx.textAlign='right';ctx.fillText(`${D.dmax} mm 멂`,gL+gW,gy+24);ctx.textAlign='left';
+  $('dnote').textContent=`옆 사진 = 시점 ${D.neighbours.join(', ')}. 깊이 ${D.planes}단계 × 패치 ${D.win}×${D.win} (400×300으로 줄여 계산). DTU 레이저 스캔과 비교한 깊이 오차 중앙값 ${D.err_med} mm, 깊이를 정한 픽셀 ${D.valid_pct}%.`;
+}
+
 /* ④ feature detection + matching */
 const FT=window.FEAT,S5={sel:null,top:true,mode:'acc',k:0};let HG=null;
 function harrisPrep(){if(HG||!(IMG[0].complete&&IMG[0].naturalWidth))return;
@@ -563,12 +662,12 @@ function renderFeat(){
   $('mres').innerHTML=`d_1 = ${e[6].toFixed(0)}, d_2 = ${e[7].toFixed(0)} → ${ratio.toFixed(2)} · <b class="i">${pass?'통과':'버림'}</b> · ${okm?'실제로 맞는 짝':'<span style="color:var(--bad);font-weight:600">실제로 틀린 짝</span>'}`;
 }
 
-function renderAll(){render1();render2();render3();renderFeat();render4();renderR()}
+function renderAll(){render1();render2();render3();renderFeat();render4();renderR();render6()}
 new ResizeObserver(()=>renderAll()).observe(document.body);
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',renderAll);
 new MutationObserver(renderAll).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
 /* pages: one step at a time */
-const PAGES=['rt','k','ep','feat','fm'];let cur=0;
+const PAGES=['rt','k','ep','feat','fm','sfm'];let cur=0;
 function show(i,push){cur=Math.max(0,Math.min(PAGES.length-1,i));
   PAGES.forEach((id,j)=>{$(id).hidden=j!==cur});
   document.querySelectorAll('.flow a').forEach((a,j)=>{if(j===cur)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
