@@ -1,7 +1,11 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>핀홀 카메라 모델</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="data/katex/katex.min.css">
 <style>
 /* 레이아웃: 흐름 띠(①→②→③) → 단계마다 [한 줄 메시지 · 그림 · 손계산 · 물었던 것]. 모눈 공책, 색은 뜻 고정. */
 :root{
@@ -17,13 +21,15 @@
   --bg:#11161f; --panel:#171e2a; --ink:#e4e9f1; --muted:#9aa5b8; --line:#2c3646; --grid:#1f2733;
   --x:#f0943f; --z:#6ea4ff; --p:#45c483; --cam:#a9a7ff; --cam2:#f07aaa; --img:#d08cf0; --fov:rgba(110,164,255,.09); --soft:#1c2432; --bad:#ff6b6b; --flat:#9db3cf; color-scheme:dark}
 body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55}
-.wrap{max-width:1180px;margin:0 auto;padding-block:22px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:26px}
+.wrap{max-width:1180px;margin:0 auto;padding-block:22px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;grid-template-columns:minmax(0,1fr);gap:26px}
 header{display:grid;gap:10px}
 header h1{font-size:1.6rem;margin:0}
 .flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:.95rem}
 .flow a{color:var(--ink);text-decoration:none;border:1px solid var(--line);background:var(--panel);padding:5px 12px;border-radius:999px}
 .flow a.next{border-style:dashed;color:var(--muted)}
+.flow a.appendix{border-style:dashed}
 .flow span{color:var(--muted)}
+.flow .appendix-sep{font-size:.8rem;margin-left:12px}
 .flow .next-chip{border:1px dashed var(--line);padding:5px 12px;border-radius:999px}
 .problem{border:2px solid var(--ink);border-radius:10px;padding:12px 16px;display:grid;gap:4px;background:var(--panel)}
 .problem b{font-size:1.08rem}
@@ -32,8 +38,10 @@ header h1{font-size:1.6rem;margin:0}
 .x{color:var(--x);font-weight:600}.z{color:var(--z);font-weight:600}.p{color:var(--p);font-weight:600}.c{color:var(--cam);font-weight:600}.c2{color:var(--cam2);font-weight:600}.i{color:var(--img);font-weight:600}
 section.step{display:grid;gap:12px}
 section.step h2{margin:0;font-size:1.25rem;text-wrap:balance}
-section.step h2 .num{display:inline-block;min-width:1.6em;color:var(--muted)}
+section.step h2 .num{display:inline-block;min-width:1.6em;color:var(--muted);white-space:nowrap}
+#render .num,#recent .num{margin-right:.4em}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;font-size:.85rem}
 .card{min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
 .card h3{margin:0 0 6px;font-size:.92rem;font-weight:600}
 .card h3 small{color:var(--muted);font-weight:400}
@@ -45,11 +53,25 @@ canvas{display:block;width:100%;height:auto;touch-action:none}
 .presets{display:flex;flex-wrap:wrap;gap:6px}
 .presets button{font:inherit;font-size:.85rem;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:4px 10px;border-radius:999px;cursor:pointer}
 .presets button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--z);outline-offset:2px}
-.eq{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:.9rem;display:flex;flex-wrap:wrap;align-items:center;gap:8px;overflow-x:auto;padding:3px 0}
+#mc-presets{gap:4px}
+#mc-presets button{padding:4px 8px}
+.view-title{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.view-title .presets{flex-shrink:0}
+button:focus-visible,input:focus-visible,a:focus-visible,canvas:focus-visible{outline:2px solid var(--z);outline-offset:2px}
+.eq{font-family:var(--sans);font-variant-numeric:tabular-nums;font-size:.9rem;display:block;padding:3px 0;min-width:0}
 .eq.big{font-size:1.05rem;font-weight:600}
+.katex{font-size:1.08em}
+.math-block{min-width:0;max-width:100%}
+.math-wrap{display:flex;flex-wrap:wrap;align-items:center;column-gap:2em}
+.math-block .katex-display{margin:.35em 0;text-align:left}
+.math-block .katex-display>.katex{text-align:left}
+.formula-row{display:grid;grid-template-columns:11em minmax(0,1fr);gap:4px 16px;align-items:center;border-top:1px solid var(--line);padding:6px 0}
+.formula-row:first-of-type{border-top:0}
+.formula-row .note{margin:2px 0 0}
+header .math-block .katex{font-size:1.1em}
+@media (max-width:600px){.formula-row{grid-template-columns:minmax(0,1fr)}}
 .mat{display:inline-block;border-left:2px solid var(--ink);border-right:2px solid var(--ink);border-radius:5px;padding:1px 5px}
-.mat table{border-collapse:collapse}.mat td{padding:0 6px;text-align:right}
+.mat table{border-collapse:collapse;font:inherit}.mat td{padding:0 6px;text-align:right}
 tr.x td{color:var(--x)} tr.z td{color:var(--z)}
 .qa{display:grid;grid-template-columns:minmax(0,15em) minmax(0,1fr);gap:6px 16px;margin:0;font-size:.92rem;background:var(--soft);border-radius:10px;padding:12px 16px}
 .qa dt{color:var(--muted)}
@@ -57,12 +79,16 @@ tr.x td{color:var(--x)} tr.z td{color:var(--z)}
 .bridge{font-size:1.02rem;font-weight:600;border-left:3px solid var(--ink);padding:2px 0 2px 12px}
 .note{color:var(--muted);font-size:.85rem;margin:2px 0 0}
 [hidden]{display:none!important}
-.defwrap{overflow-x:auto}
 h3.sub{margin:4px 0 0;font-size:1.02rem}
+.sift-steps{list-style:none;margin:0 0 6px;padding:0;display:grid;gap:8px}
+.sift-steps li{display:grid;grid-template-columns:1.5em minmax(0,1fr);gap:4px}
+.sift-steps .step-detail{margin:4px 0 0 1em}
 .quad{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .case{border-top:4px solid var(--cc)}
 .case h3 b{color:var(--cc);margin-left:6px}
-.case .eq{margin:6px 0 0;font-size:.86rem}
+.case p{margin:6px 0 0}
+.case-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:center}
+.case-result{min-width:0;font-size:1rem}
 @media (max-width:820px){.quad{grid-template-columns:1fr}}
 .emapwrap{display:grid;gap:8px}
 .bars{display:grid;gap:6px;margin-top:10px}
@@ -76,9 +102,33 @@ h3.sub{margin:4px 0 0;font-size:1.02rem}
 #fm .knobs{grid-template-columns:1fr;align-content:start}
 @media (max-width:820px){#fm table.def td.val{white-space:normal}#fm table.def td{min-width:6em}}
 .pipe{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center}
-.pipe .s{display:grid;border:1px solid var(--line);border-radius:8px;padding:5px 10px;background:var(--soft);font-size:.88rem;line-height:1.35}
+.pipe .s{display:grid;min-height:2.5em;align-content:center;border:1px solid var(--line);border-radius:8px;padding:5px 10px;background:var(--soft);font-size:.88rem;line-height:1.35}
 .pipe .s small{color:var(--muted)}
 .pipe .ar{color:var(--muted)}
+section#roadmap{word-break:keep-all}
+.roadmap-flow{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto minmax(0,1fr) auto auto;gap:8px;align-items:stretch;min-height:500px}
+.roadmap-flow>.s,.roadmap-flow>.ar{align-self:center}
+.roadmap-flow>.card{display:grid;grid-template-rows:auto auto 1fr;gap:16px;padding:16px}
+#roadmap .roadmap-material,#roadmap .roadmap-surface{border-left:4px solid var(--branch-color);background:color-mix(in srgb,var(--branch-color) 7%,var(--panel))}
+#roadmap .roadmap-material{--branch-color:var(--cam)}
+#roadmap .roadmap-surface{--branch-color:var(--x)}
+#roadmap .roadmap-material>h3,#roadmap .roadmap-surface>h3{color:var(--branch-color)}
+.roadmap-flow>.card>h3{font-size:1.4rem}
+.roadmap-flow h3 small{display:block;font-size:1rem;margin-top:8px}
+.roadmap-flow .flow{gap:10px;font-size:.95rem;align-content:start}
+.roadmap-flow .flow a{padding:8px 12px;border-color:var(--branch-color);color:var(--branch-color)}
+.roadmap-flow .roadmap-example{background:color-mix(in srgb,var(--branch-color) 12%,var(--panel));font-size:1.05rem;padding:16px}
+.roadmap-flow .roadmap-example p{margin:8px 0 0}
+.roadmap-flow .roadmap-example b{font-size:1.15rem;white-space:nowrap}
+.roadmap-flow .roadmap-example small{display:block;font-size:.8rem;color:var(--muted);white-space:nowrap}
+.roadmap-flow>.s{font-size:1.1rem;padding:14px 8px}
+.roadmap-flow>.ar{text-align:center;font-size:1.8rem}
+.roadmap-flow>.ar small{display:block;font-size:.9rem}
+#roadmap>p{font-size:1.05rem}
+.pipe.render-compare{display:grid;grid-template-columns:auto auto auto auto repeat(3,auto auto);justify-content:start}
+.render-compare .route{font-size:.75rem}
+.render-compare .s.changed{border-color:var(--p)}
+.render-compare .note{grid-column:4;margin:0}
 .two-step{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:stretch}
 .two-step .card{display:grid;gap:4px;align-content:start}
 .two-step .card span{color:var(--muted);font-size:.92rem}
@@ -106,42 +156,128 @@ table.def td.val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-
 <div class="wrap">
 <header>
   <h1>핀홀 카메라 모델</h1>
-  <div class="card"><h3>원근 투영 공식 (바닥 2D)</h3>
-    <div class="eq">① 월드 → 카메라 &nbsp; (x_c, z_c)ᵀ = R (P − C) = R P + t, &nbsp; R = <span class="mat"><table><tr><td>cos θ</td><td>sin θ</td></tr><tr><td>−sin θ</td><td>cos θ</td></tr></table></span>, &nbsp; t = −R C</div>
-    <div class="eq">&nbsp;&nbsp; 카메라 중심 &nbsp; C = −Rᵀ t</div>
-    <div class="eq">② 카메라 → 이미지 &nbsp; u = f · x_c / z_c + c_x</div>
-    <div class="eq">③ 스테레오 깊이 &nbsp; Z = f · b / d, &nbsp; d = u_2 − u_1 (시차) &nbsp;(평행 스테레오, 기준선 b)</div>
-    <div class="eq">④ Harris 점수 &nbsp; R = det(M) − k · trace(M)², &nbsp; M = Σ<sub>창</sub> [[I_x², I_x I_y], [I_x I_y, I_y²]] &nbsp;· 비율 검사 d_1 / d_2 &lt; 0.75</div>
-    <div class="eq">⑤ 에피폴라 제약 &nbsp; x_2ᵀ F x_1 = 0, &nbsp; F = K_2⁻ᵀ [t]ₓ R K_1⁻¹ &nbsp;(R, t: 카메라 1 → 2, [t]ₓ: t의 외적 행렬)</div>
-    <div class="eq">⑥ PnP &nbsp; 아는 3D 점 X ↔ 새 사진 픽셀 x → R, t, &nbsp; 번들 조정 &nbsp; 모든 사진의 재투영 오차 합 Σ ‖x − 투영(R, t, X)‖² 최소</div>
-    <p class="note">3D: z_c · (u, v, 1)ᵀ = K [R | t] (X, Y, Z, 1)ᵀ, &nbsp; K = [[f, 0, c_x], [0, f, c_y], [0, 0, 1]]</p>
+  <div class="card" id="formula-box"><h3>원근 투영 공식 (바닥 2D)</h3>
+    <div class="formula-row" data-from="rt"><b>① 월드 → 카메라</b><div class="math-block">
+      <div class="math-wrap">
+        <div class="math-block">\[ \begin{pmatrix}x_c\\ z_c\end{pmatrix} = R\,(P-C) = R\,P + t, \]</div>
+        <div class="math-block">\[ R=\begin{pmatrix}\cos\theta &amp; \sin\theta\\ -\sin\theta &amp; \cos\theta\end{pmatrix}, \]</div>
+        <div class="math-block">\[ t=-R\,C \]</div>
+      </div>
+      <p class="note">카메라 중심 \(C=-R^{\top}t\)</p>
+    </div></div>
+    <div class="formula-row" data-from="k"><b>② 카메라 → 이미지</b><div class="math-block">
+      \[ u = f\,\frac{x_c}{z_c} + c_x \]
+    </div></div>
+    <div class="formula-row" data-from="ep"><b>③ 스테레오 깊이</b><div class="math-block">
+      <div class="math-wrap">
+        <div class="math-block">\[ Z=\frac{f\,b}{d}, \]</div>
+        <div class="math-block">\[ d=u_2-u_1 \]</div>
+      </div>
+      <p class="note">d: 시차 · b: 기준선 · 평행 스테레오</p>
+    </div></div>
+    <div class="formula-row" data-from="fm"><b>⑤ 에피폴라 제약</b><div class="math-block">
+      <div class="math-wrap">
+        <div class="math-block">\[ x_2^{\top}F\,x_1=0, \]</div>
+        <div class="math-block">\[ F=K_2^{-\top}\,[t]_{\times}\,R\,K_1^{-1} \]</div>
+      </div>
+      <p class="note">R, t: 카메라 1 → 2 · \([t]_{\times}\): t의 외적 행렬</p>
+    </div></div>
+    <div class="formula-row" data-from="fm"><b>3D 일반형</b><div class="math-block">
+      <div class="math-wrap">
+        <div class="math-block">\[ z_c\begin{pmatrix}u\\ v\\ 1\end{pmatrix}=K\,[R\mid t]\begin{pmatrix}X\\ Y\\ Z\\ 1\end{pmatrix}, \]</div>
+        <div class="math-block">\[ K=\begin{pmatrix}f&amp;0&amp;c_x\\ 0&amp;f&amp;c_y\\ 0&amp;0&amp;1\end{pmatrix} \]</div>
+      </div>
+    </div></div>
   </div>
   <nav class="flow" aria-label="흐름">
+    <a href="#roadmap">⓪ 로드맵</a><span>→</span>
     <a href="#rt">① 외부 파라미터 [R | t] &nbsp;월드 → 카메라</a><span>→</span>
     <a href="#k">② 내부 파라미터 K &nbsp;카메라 → 이미지</a><span>→</span>
     <a href="#ep">③ 삼각측량 · 스테레오</a><span>→</span>
     <a href="#feat">④ 특징점 검출 · 매칭</a><span>→</span>
     <a href="#fm">⑤ 8점 알고리즘 · RANSAC</a><span>→</span>
     <a href="#sfm">⑥ SfM · MVS</a><span>→</span>
-    <span class="next-chip">⑦ 면 만들기 (예정)</span>
+    <a href="#mesh">⑦ TSDF · Marching Cubes</a><span class="appendix-sep">부록</span>
+    <a href="#render" class="appendix">부록 A 렌더링으로 풀기</a><span>→</span>
+    <a href="#recent" class="appendix">부록 B 최근 연구 (2026)</a>
   </nav>
 </header>
 
+<section class="step" id="roadmap">
+  <h2><span class="num">⓪</span>로드맵 — 사진에서 면(mesh)까지, 두 갈래</h2>
+  <div class="pipe roadmap-flow" aria-label="사진에서 재료를 얻고 면을 만드는 두 갈래">
+    <span class="s">사진 N장</span><span class="ar">→</span>
+    <div class="card roadmap-material">
+      <h3>갈래 1 · 재료 얻기 <small>사진 → 카메라 (K, R, t) · 깊이</small></h3>
+      <nav class="flow" aria-label="재료 얻기 쪽">
+        <a href="#rt">① 외부 파라미터</a>
+        <a href="#k">② 내부 파라미터</a>
+        <a href="#ep">③ 삼각측량 · 스테레오</a>
+        <a href="#feat">④ 특징점 검출 · 매칭</a>
+        <a href="#fm">⑤ 8점 알고리즘</a>
+        <a href="#sfm">⑥ SfM · MVS</a>
+      </nav>
+      <div class="card roadmap-example">
+        <span class="note">최신 예시</span>
+        <p><b>Fast-FoundationStereo</b><small>Wen 외, CVPR 2026</small></p>
+        <p>스테레오 사진 2장 → 시차 → 깊이 (③ 자리), 실시간</p>
+      </div>
+    </div>
+    <span class="ar"><small>K, R, t · 깊이</small>→</span>
+    <div class="card roadmap-surface">
+      <h3>갈래 2 · Mesh 만들기 <small>카메라 + 사진 (+ 깊이) → 면(mesh)</small></h3>
+      <nav class="flow" aria-label="Mesh 만들기 쪽">
+        <a href="#mesh">⑦ TSDF · Marching Cubes</a>
+        <a href="#render" class="appendix">부록 A 렌더링으로 풀기</a>
+        <a href="#recent" class="appendix">부록 B 최근 연구 (2026)</a>
+      </nav>
+      <div class="card roadmap-example">
+        <span class="note">최신 예시</span>
+        <p><b>GGGS</b><small>Zhang 외, arXiv 2026</small></p>
+        <p>타원체로 깊이를 더 정확히 그려 → ⑦ TSDF · Marching Cubes (부록 B에서 자세히)</p>
+      </div>
+    </div>
+    <span class="ar">→</span><span class="s">면(mesh)</span>
+  </div>
+  <div class="card roadmap-material">
+    <h3>Fast-FoundationStereo</h3>
+    <a href="data/fast_foundationstereo_fig1.png" target="_blank" rel="noopener"><img title="그림: Wen 외, Fast-FoundationStereo (CVPR 2026) 그림 1 · arXiv 2512.11130 · CC BY 4.0" src="data/fast_foundationstereo_fig1.png" width="1400" height="440" style="display:block;width:100%;height:auto" alt="왼쪽 사진과 여러 방법의 시차 지도 비교: 느린 모델 둘과 실시간 모델 넷, 맨 오른쪽 Fast-FoundationStereo가 느린 모델과 비슷하게 정확"></a>
+  </div>
+  <div class="card roadmap-surface">
+    <h3>GGGS</h3>
+    <div class="grid2">
+  <div class="card"><h3>실험 ① 3DGS vs GGGS <small>· 왼쪽 3DGS · 오른쪽 GGGS / 위 색 · 아래 렌더 깊이로 만든 형상</small></h3>
+    <video src="data/gggs_vs_3dgs.mp4" width="1000" height="552" controls muted loop playsinline preload="metadata" style="display:block;width:100%;height:auto"></video>
+  </div>
+  <div class="card"><h3>실험 ② GGGS + 깊이 손실 <small>· 왼쪽 GGGS · 오른쪽 GGGS + 측정 깊이 손실</small></h3>
+    <video src="data/gggs_depth_loss.mp4" width="1000" height="552" controls muted loop playsinline preload="metadata" style="display:block;width:100%;height:auto"></video>
+  </div>
+    </div>
+  <p class="note" style="font-size:.72rem">실험·영상: 심영찬 (연구실 그룹 미팅 자료)</p>
+  </div>
+  <p style="margin:0">최신 연구는 문제를 새로 푸는 것이 아니라, 이 길의 한 칸을 더 잘 채운다. 학습 모델의 정답도 상당수가 COLMAP의 SfM·MVS(⑥) 결과나 합성 렌더링에서 나온다 → 기초가 그대로 쓰인다.</p>
+</section>
+
 <!-- ① R|t -->
 <section class="step" id="rt">
-  <h2><span class="num">①</span>외부 파라미터 [R | t] — 월드 좌표계 → 카메라 좌표계 변환</h2>
+  <h2><span class="num">①</span>외부 파라미터 \([R\mid t]\) — 월드 좌표계 → 카메라 좌표계 변환</h2>
+  <div class="card">
+    <h3>사진 여러 장 → 복원 <small>· 초록 사각뿔 하나 = 사진 한 장을 찍은 카메라</small></h3>
+    <img src="data/dense_sfm_fig1_textureless_object.png" width="1012" height="248" style="display:block;width:100%;height:auto" alt="파란 물체를 여러 방향에서 찍은 사진 4장과, 복원된 점 구름 둘레에 초록 사각뿔로 표시된 카메라들">
+    <p class="note">그림: Lee &amp; Yoo, Dense-SfM (CVPR 2025)</p>
+  </div>
   <div class="grid2">
     <div class="card"><h3>월드 좌표계 <small>· 평면도 · 격자 1칸 = 1 m</small></h3><canvas id="w1"></canvas></div>
-    <div class="card"><h3>카메라 좌표계 <small>· <span class="x">x_c</span> 오른쪽, <span class="z">z_c</span> 광축 (앞)</small></h3><canvas id="v1"></canvas></div>
+    <div class="card"><h3>카메라 좌표계 <small>· <span class="x">\(x_c\)</span> 오른쪽, <span class="z">\(z_c\)</span> 광축 (앞)</small></h3><canvas id="v1"></canvas></div>
   </div>
   <div class="grid2">
     <div class="card"><h3>파라미터</h3><div class="defwrap" id="def1"></div></div>
     <div class="card knobs" aria-label="R|t 손잡이">
-      <label for="px"><span class="p">P_X</span><input id="px" type="range" min="-1" max="5" step="0.1"><output id="pxo"></output></label>
-      <label for="pz"><span class="p">P_Z</span><input id="pz" type="range" min="-1" max="5" step="0.1"><output id="pzo"></output></label>
-      <label for="cx"><span class="c">C_X</span><input id="cx" type="range" min="-1" max="5" step="0.1"><output id="cxo"></output></label>
-      <label for="cz"><span class="c">C_Z</span><input id="cz" type="range" min="-1" max="5" step="0.1"><output id="czo"></output></label>
-      <label for="th"><span class="c">회전각 θ (반시계 +)</span><input id="th" type="range" min="-90" max="90" step="5"><output id="tho"></output></label>
+      <label for="px"><span class="p">\(P_X\)</span><input id="px" type="range" min="-1" max="5" step="0.1"><output id="pxo"></output></label>
+      <label for="pz"><span class="p">\(P_Z\)</span><input id="pz" type="range" min="-1" max="5" step="0.1"><output id="pzo"></output></label>
+      <label for="cx"><span class="c">\(C_X\)</span><input id="cx" type="range" min="-1" max="5" step="0.1"><output id="cxo"></output></label>
+      <label for="cz"><span class="c">\(C_Z\)</span><input id="cz" type="range" min="-1" max="5" step="0.1"><output id="czo"></output></label>
+      <label for="th"><span class="c">회전각 \(\theta\) (반시계 +)</span><input id="th" type="range" min="-90" max="90" step="5"><output id="tho"></output></label>
     </div>
   </div>
   <div class="problem">
@@ -154,15 +290,15 @@ table.def td.val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-
 <section class="step" id="k">
   <h2><span class="num">②</span>내부 파라미터 K — 카메라 좌표계 → 이미지 좌표 (원근 투영)</h2>
   <div class="grid2">
-    <div class="card"><h3>평면도 <small>· 개념도 (이미지 평면 위치는 임의)</small></h3><canvas id="w2"></canvas></div>
+    <div class="card"><h3>평면도</h3><canvas id="w2"></canvas></div>
     <div style="display:grid;gap:12px;min-width:0">
       <div class="card"><h3>이미지 <small>· 1행, 0–640 픽셀</small></h3><canvas id="s2"></canvas></div>
       <div class="card"><h3>파라미터</h3><div class="defwrap" id="def2"></div></div>
       <div class="card knobs" aria-label="K 손잡이">
-        <label for="xc"><span class="x">x_c</span><input id="xc" type="range" min="-3" max="3" step="0.1"><output id="xco"></output></label>
-        <label for="zc"><span class="z">z_c</span><input id="zc" type="range" min="0.5" max="6" step="0.1"><output id="zco"></output></label>
+        <label for="xc"><span class="x">\(x_c\)</span><input id="xc" type="range" min="-3" max="3" step="0.1"><output id="xco"></output></label>
+        <label for="zc"><span class="z">\(z_c\)</span><input id="zc" type="range" min="0.5" max="6" step="0.1"><output id="zco"></output></label>
         <label for="f">f<input id="f" type="range" min="200" max="1000" step="10"><output id="fo"></output></label>
-        <label for="k"><span class="p">광선 따라 이동 (깊이 ×)</span><input id="k" type="range" min="0.5" max="2" step="0.05"><output id="ko"></output></label>
+        <label for="depth-scale"><span class="p">광선 따라 이동 (깊이 ×)</span><input id="depth-scale" type="range" min="0.5" max="2" step="0.05"><output id="ko"></output></label>
       </div>
     </div>
   </div>
@@ -175,7 +311,7 @@ table.def td.val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-
 <section class="step" id="ep">
   <h2><span class="num">③</span>삼각측량 · 스테레오 — 두 광선의 교점으로 깊이 결정</h2>
   <div class="grid2">
-    <div class="card"><h3>평면도 <small>· <span class="c">카메라 1</span> 원점, <span class="c2">카메라 2</span> 왼쪽으로 기준선 b · 같은 방향 (평행 스테레오) · 격자 1칸 = 1 m</small></h3><canvas id="w3"></canvas></div>
+    <div class="card"><h3>평면도 <small>· <span class="c">카메라 1</span> · <span class="c2">카메라 2</span></small></h3><canvas id="w3"></canvas></div>
     <div style="display:grid;gap:12px;min-width:0">
       <div class="card"><h3><span class="c">카메라 1 이미지</span> <small>· 광선 위 깊이 가설이 모두 같은 픽셀</small></h3><canvas id="s3a"></canvas></div>
       <div class="card"><h3><span class="c2">카메라 2 이미지</span> <small>· 가설이 한 줄로 늘어섬 (2D 이미지에서는 에피폴라 선)</small></h3><canvas id="s3b"></canvas></div>
@@ -183,32 +319,49 @@ table.def td.val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-
       <div class="card knobs" aria-label="두 카메라 손잡이">
         <label for="cand"><span class="p">깊이 가설</span><input id="cand" type="range" min="0.5" max="6" step="0.05"><output id="cando"></output></label>
         <label for="bl">기준선 b<input id="bl" type="range" min="0" max="1.5" step="0.05"><output id="blo"></output></label>
-        <label for="qx"><span class="p">P_X</span><input id="qx" type="range" min="-2" max="1.5" step="0.1"><output id="qxo"></output></label>
-        <label for="qz"><span class="p">P_Z</span><input id="qz" type="range" min="1" max="6" step="0.1"><output id="qzo"></output></label>
+        <label for="qx"><span class="p">\(P_X\)</span><input id="qx" type="range" min="-2" max="1.5" step="0.1"><output id="qxo"></output></label>
+        <label for="qz"><span class="p">\(P_Z\)</span><input id="qz" type="range" min="1" max="6" step="0.1"><output id="qzo"></output></label>
       </div>
     </div>
   </div>
   <div class="problem">
     <b>문제: 깊이를 구하려면 카메라 2 이미지에서 대응점을 찾아야 한다.</b>
-    <span>텍스처 없는 면에서는 매칭이 어렵고, 카메라 2의 [R | t]를 모르면 에피폴라 선도 그릴 수 없다 → ④ 특징점 검출 · 매칭</span>
+    <span>텍스처 없는 면에서는 매칭이 어렵고, 카메라 2의 \([R\mid t]\)를 모르면 에피폴라 선도 그릴 수 없다 → ④ 특징점 검출 · 매칭</span>
   </div>
 </section>
 <!-- ④ feature detection + matching -->
 <section class="step" id="feat">
   <h2><span class="num">④</span>특징점 검출 · 매칭 — 다시 찾기 쉬운 점을 고르고, 가장 닮은 점과 짝짓는다</h2>
-  <h3 class="sub">1. 검출: 창을 어느 방향으로 밀어도 모습이 달라지는 점 = 코너 (Harris · SIFT는 같은 목적을 DoG로)</h3>
+  <h3 class="sub">1. 검출: 창을 어느 방향으로 밀어도 모습이 달라지는 점 = 코너 (SIFT - DoG 사용)</h3>
+  <p class="note"><b>SIFT</b>: Scale-Invariant Feature Transform (Lowe, IJCV 2004) · <b>DoG</b>: Difference of Gaussians</p>
+  <ol class="sift-steps">
+    <li><span>①</span><div><b>후보 찾기 (DoG)</b>: 흐림 정도가 다른 두 이미지를 빼서, 특정 크기의 무늬가 도드라진 점을 고른다</div></li>
+    <li><span>②</span><div><b>엣지 버리기 (\(\lambda\))</b>: 작은 창을 여러 방향으로 밀어, 창 안 흑백 밝기가 얼마나 바뀌는지 본다
+      <div class="step-detail">\(\lambda_1\): 가장 크게 바뀌는 방향의 변화량 · \(\lambda_2\): 가장 작게 바뀌는 방향의 변화량(\(\lambda_1\) 방향과 90°)<br>
+        → 아래 세 칸처럼 \(\lambda_1, \lambda_2\) 둘 다 큰 점(코너)만 남긴다</div>
+    </div></li>
+    <li><span>③</span><div><b>Descriptor 만들기</b>: 남은 점마다 주변 모양을 숫자로 적는다 → 2. 매칭</div></li>
+  </ol>
   <div class="quad">
     <div class="card"><h3>이미지 1 <small>· 세 점에 창(30×30 픽셀)을 놓음</small></h3><canvas id="qimg"></canvas></div>
-    <div class="card case" style="--cc:var(--flat)"><h3>평면 <b>✗ 위치를 못 정함</b></h3><canvas id="qc-flat"></canvas><p class="eq" id="qr-flat"></p></div>
-    <div class="card case" style="--cc:var(--x)"><h3>엣지 <b>△ 경계를 따라 미끄러짐</b></h3><canvas id="qc-edge"></canvas><p class="eq" id="qr-edge"></p></div>
-    <div class="card case" style="--cc:var(--p)"><h3>코너 <b>✓ 한 점으로 정해짐</b></h3><canvas id="qc-corner"></canvas><p class="eq" id="qr-corner"></p></div>
+    <div class="card case" style="--cc:var(--flat)"><h3>평면 <b>✗ 위치를 못 정함</b></h3><div class="case-body"><canvas id="qc-flat"></canvas><div class="case-result"><div>\(\lambda_1\), \(\lambda_2\) 둘 다 작음</div><p>어느 방향으로 밀어도 밝기 그대로</p></div></div></div>
+    <div class="card case" style="--cc:var(--x)"><h3>엣지 <b>△ 경계를 따라 미끄러짐</b></h3><div class="case-body"><canvas id="qc-edge"></canvas><div class="case-result"><div>\(\lambda_1\)만 큼, \(\lambda_2\)는 작음</div><p>경계를 따라 밀면 그대로, 가로지르면 바뀜</p></div></div></div>
+    <div class="card case" style="--cc:var(--p)"><h3>코너 <b>✓ 한 점으로 정해짐</b></h3><div class="case-body"><canvas id="qc-corner"></canvas><div class="case-result"><div>\(\lambda_1\), \(\lambda_2\) 둘 다 큼</div><p>어느 방향으로 밀어도 바뀜</p></div></div></div>
   </div>
-  <p class="note">각 칸 왼쪽 = 창 주변 확대 (이미지 그대로). 오른쪽 = 창 밀기 지도 E(u, v): 이미지 밝기가 아니라, 창을 가로·세로 ±12 픽셀 밀었을 때 원래 창과의 차이다. <b>옅음 = 밀어도 비슷함, 진함 = 밀면 달라짐</b>, 가운데 칸 = 밀지 않음(차이 0). 코너는 가운데만 옅다 = 어느 방향으로 밀어도 달라진다.</p>
-  <h3 class="sub">2. 매칭: 디스크립터 거리 1등이 2등보다 확실히 가까울 때만 짝 (d_1 / d_2 &lt; 0.75)</h3>
+  <p class="note">사진: DTU MVS 데이터셋 scan 114 — Jensen et al., “Large Scale Multi-view Stereopsis Evaluation”, CVPR 2014 (<a href="https://roboimagedata.compute.dtu.dk/?page_id=36" style="color:inherit">데이터셋 페이지</a>)</p>
+  <h3 class="sub">2. 매칭: 점마다 Descriptor를 만들고, 가장 닮은 점과 짝짓는다</h3>
+  <p class="note"><b>Descriptor</b>: 특징점 주변 모양을 숫자로 적은 것. 두 사진의 점끼리 이 숫자가 비슷하면 같은 점으로 본다.</p>
+  <ol class="sift-steps">
+    <li><span>①</span><div><b>픽셀마다 화살표</b>: 이웃과의 밝기 차(오른쪽 − 왼쪽, 아래 − 위)로, 밝기가 커지는 방향과 세기를 구한다</div></li>
+    <li><span>②</span><div><b>칸마다 8개 숫자</b>: 점 주변 16×16 픽셀을 4×4칸으로 나누고, 칸 안 화살표를 8방향(→ ↗ ↑ ↖ ← ↙ ↓ ↘)으로 나눠 세기를 더한다</div></li>
+    <li><span>③</span><div><b>이어 붙이기</b>: 16칸 × 8방향 = 숫자 128개 → 이것이 Descriptor</div></li>
+    <li><span>④</span><div><b>짝짓기</b>: 사진 2의 모든 점과 Descriptor 거리를 재서, 1등(\(d_1\))이 2등(\(d_2\))보다 확실히 가까울 때만 짝 (\(d_1 / d_2 \lt  0.75\)) → 아래 데모</div></li>
+  </ol>
   <div class="card"><h3>이미지 1 → 이미지 2 <small>· <span class="p">1등</span> · 2등 후보</small></h3><canvas id="pairm"></canvas>
     <div class="presets" style="margin-top:8px;align-items:center"><span class="eq" id="mres" style="margin-right:12px"></span><button type="button" id="m-acc">통과한 예</button><button type="button" id="m-rej">버린 예</button><button type="button" id="m-next">다음 예</button></div></div>
+  <div class="card"><img src="data/sift_8bins.png" width="1640" height="760" style="display:block;width:100%;height:auto" alt="점 주변 16×16 픽셀을 4×4칸으로 나누고, 칸마다 픽셀 16개의 밝기 변화 화살표를 8방향 상자에 나눠 담아 길이를 더하면 숫자 8개가 된다는 그림: 세로 경계 칸은 → 상자에만, 모서리 칸은 →와 ↗ 상자에 나뉜다"></div>
   <div class="problem">
-    <b>문제: 대응점은 얻었지만, 두 카메라의 [R | t]를 모르면 에피폴라 선을 그릴 수 없고 깊이도 구할 수 없다.</b>
+    <b>문제: 대응점은 얻었지만, 두 카메라의 \([R\mid t]\)를 모르면 에피폴라 선을 그릴 수 없고 깊이도 구할 수 없다.</b>
     <span>대응점만으로 두 카메라의 관계(기본 행렬 F)를 거꾸로 구한다 → ⑤ 8점 알고리즘</span>
   </div>
 </section>
@@ -223,37 +376,40 @@ table.def td.val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-
     <div class="card later"><b>그다음 · 깊이 구하기 <small>(⑥ MVS)</small></b><span>F로 에피폴라 선을 그린다 → 나머지 192만 픽셀의 짝을 선 위에서만 찾는다</span></div>
   </div>
   <div class="card"><h3>F가 하는 일 <small>· 이미지 1의 점 → 이미지 2의 선</small></h3>
-    <div class="eq big"><span class="i">선</span> <span class="mat"><table><tr><td>a</td></tr><tr><td>b</td></tr><tr><td>c</td></tr></table></span> = F <span class="mat"><table><tr><td>f11</td><td>f12</td><td>f13</td></tr><tr><td>f21</td><td>f22</td><td>f23</td></tr><tr><td>f31</td><td>f32</td><td>f33</td></tr></table></span> × <span class="p">점 x_1</span> <span class="mat"><table><tr><td>u_1</td></tr><tr><td>v_1</td></tr><tr><td>1</td></tr></table></span></div>
-    <div class="eq">짝 x_2 = (u_2, v_2)는 이 선 위에 있다: a · u_2 + b · v_2 + c = 0 → 짝 1쌍 = 식 1개</div>
-    <div class="eq">9칸 중 1칸은 배율 (F를 2배 해도 같은 선) → 모르는 칸 8개 → 짝 8쌍</div>
+    <div class="eq big math-block">\[ \underbrace{\begin{pmatrix}a\\ b\\ c\end{pmatrix}}_{\htmlClass{i}{\text{선 (이미지 2)}}} = \underbrace{\begin{pmatrix}f_{11}&amp;f_{12}&amp;f_{13}\\ f_{21}&amp;f_{22}&amp;f_{23}\\ f_{31}&amp;f_{32}&amp;\mathbf{1}\end{pmatrix}}_{F} \underbrace{\begin{pmatrix}u_1\\ v_1\\ 1\end{pmatrix}}_{\htmlClass{p}{\text{점 }x_1\text{ (이미지 1)}}} \]</div>
+    <div class="eq">\(x_1\) 끝의 1: 픽셀 \((u_1, v_1)\)에 1을 붙여 3칸으로 맞춘 것 (3×3 행렬 F와 곱하려고)</div>
+    <div class="eq">짝 \(x_2 = (u_2, v_2)\)는 이 선 위에 있다: \(a\,u_2 + b\,v_2 + c = 0\) → 짝 1쌍 = 식 1개</div>
+    <div class="eq">9칸 중 1칸은 배율 (F를 2배 해도 같은 선) → 그 칸을 1로 둔다 → 모르는 칸 8개 → 짝 8쌍</div>
   </div>
-  <h3 class="sub">2. 실제 사진: [R | t]를 모르므로 대응점 8쌍으로 F를 구하고, F로 에피폴라 선을 그린다 (F x_1 = 이미지 2의 선)</h3>
-  <div class="card"><h3>이미지 1 <small>(DTU scan 114, 시점 13)</small> · 이미지 2 <small>(시점 32, 시점 차이 25.9°) · <span class="p">초록 선 = 짝 표시 (F 계산에 쓴 대응점)</span> (<span style="color:var(--bad);font-weight:600">빨강 = 틀린 짝</span>) · <span class="i">보라 = 선택한 점의 에피폴라 선 (추정 F)</span>, 흰 점선 = 기준 F · 이미지 1을 누르면 점 선택</small></h3><canvas id="pair"></canvas></div>
-  <div class="grid2">
-    <div class="card"><h3>파라미터</h3><div class="defwrap" id="def4"></div><div class="bars" id="bars4"></div></div>
-    <div class="card knobs" aria-label="8점 알고리즘 손잡이">
-      <label for="nfm">사용할 대응점 수 N<input id="nfm" type="range" min="8" max="60" step="1"><output id="nfmo"></output></label>
-      <label for="bad1"><span>틀린 대응점 1개 섞기</span><input id="bad1" type="checkbox" style="width:auto;justify-self:start"><output></output></label>
-      <div class="presets"><button type="button" id="resample">대응점 다시 뽑기</button><button type="button" id="allLines" aria-pressed="false">N쌍의 에피폴라 선 모두 보기</button></div>
-      <p class="note">자료: DTU MVS 2014 (Aanæs et al., IJCV 2016). 대응점 = SIFT 매칭 624쌍. 기준 F = DTU 보정 카메라로 계산한 F. 정상/틀린 대응점은 기준 F에서 2 픽셀 기준으로 나눔.</p>
-    </div>
-  </div>
-  <p class="bridge">틀린 짝이 하나만 섞여도 F가 크게 어긋난다 (8쌍 기준 평균 에피폴라 거리 3.1 → 20.8 픽셀, 200회 중앙값). 실제 매칭 624쌍에는 틀린 짝이 13.1% 섞여 있다.</p>
+  <h3 class="sub">2. 실제 사진: \([R\mid t]\)를 모르므로 대응점 8쌍으로 F를 구하고, F로 에피폴라 선을 그린다 (\(F\,x_1\) = 이미지 2의 선)</h3>
+  <div class="card"><h3>이미지 1 · 이미지 2 <small>· <span class="p">초록 선 = F 계산에 쓴 짝</span> · <span class="i">보라 = 선택한 점의 에피폴라 선 (추정 F)</span> · 흰 점선 = 기준 F</small></h3><canvas id="pair"></canvas></div>
   <h3 class="sub">3. RANSAC: 무작위 8쌍으로 F → 624쌍이 투표 → 여러 번 반복해 찬성이 가장 많은 F를 고른다</h3>
+  <p class="note"><b>RANSAC</b>: RANdom SAmple Consensus (Fischler &amp; Bolles, Communications of the ACM 1981)</p>
+  <div class="eq">투표 기준: 짝 \((x_1, x_2)\)마다 이 F로 \(x_1\)의 에피폴라 선을 이미지 2에 그리고, \(x_2\)와 그 선 사이 거리 \(|a\,u_2 + b\,v_2 + c| / \sqrt{a^2 + b^2}\) (픽셀)를 잰다 → 2 픽셀 안이면 찬성</div>
   <div class="card"><h3>찬성 · 반대 <small>· <span class="p">초록 점 = 찬성 (그 F의 에피폴라 선에서 2 픽셀 안)</span>, 회색 점 = 반대 · 고리 = 뽑은 8쌍 (흰색 정상, <span style="color:var(--bad);font-weight:600">빨강 틀린 짝</span>)</small></h3><canvas id="rsc"></canvas>
     <div class="presets" style="margin-top:8px;align-items:center"><button type="button" id="r-one">한 번 뽑기</button><button type="button" id="r-100">100번 반복</button><button type="button" id="r-new">처음부터</button><span class="eq" id="r-res" style="margin-left:8px"></span></div></div>
   <div class="grid2">
     <div class="card"><h3>찬성 수</h3><div class="bars" id="r-bars" style="margin-top:0"></div></div>
-    <div class="card"><h3>F에서 R | t 꺼내기 <small>· K 벗기기: E = K_2ᵀ F K_1 → R, t 후보 4개 → 점이 두 카메라 앞에 오는 1개</small></h3><div class="defwrap" id="r-def"></div></div>
+    <div class="card"><h3>F에서 \(R,\ t\) 꺼내기</h3>
+      <ol class="sift-steps">
+        <li><span>①</span><div>F 안에는 카메라 관계(R, t)와 렌즈(K)가 섞여 있다: <div class="math-block">\[F = \underbrace{K_2^{-\top}}_{\text{픽셀→광선 (카메라 2)}}\ \underbrace{[t]_{\times} R}_{E}\ \underbrace{K_1^{-1}}_{\text{픽셀→광선 (카메라 1)}}\]</div></div></li>
+        <li><span>②</span><div>K는 미리 안다 → 벗기기: <div class="math-block">\[E = \underbrace{K_2^{\top} F K_1}_{\text{K 벗기기}} = \underbrace{[t]_{\times} R}_{\text{곱해진 3×3 표 하나}}\]</div></div></li>
+        <li><span>③</span><div>E 쪼개기: <div class="math-block">\[E \;\xrightarrow{\ \text{SVD}\ }\; \underbrace{R,\ t}_{\text{후보 4쌍 → 점이 두 카메라 앞인 1쌍}} \quad (t\text{는 방향만})\]</div></div></li>
+      </ol>
+      <p class="note">\(F\): 기본 행렬 (이미지 1의 점 → 이미지 2의 선, 위에서 8점으로 구함)<br>
+        \(K_1, K_2\): 카메라 1, 2의 내부 파라미터 (초점거리 \(f\), 주점 \(c_x, c_y\) · ② 쪽)<br>
+        \(R\): 카메라 1 → 2 회전 · \(t\): 카메라 1 → 2 이동 · \([t]_{\times}\): \(t\)와의 외적을 행렬로 쓴 것<br>
+        \(E\): 본질 행렬 (Essential matrix, F에서 K를 벗겨 R, t만 남은 것)<br>
+        SVD: Singular Value Decomposition (특이값 분해, 행렬을 곱하기 전 조각으로 쪼개는 방법)<br>
+        \(K^{-1}\): 픽셀 → 광선 방향 (② 거꾸로) · \(K_2\)에 \(^{\top}\)가 붙는 이유: \(x_2^{\top} F x_1 = (K_2^{-1}x_2)^{\top}\, E\,(K_1^{-1}x_1)\), 곧 \(x_2\)가 왼쪽에 눕혀 곱해져서</p>
+    </div>
   </div>
+  <div class="card"><img src="data/rt_four_solutions.png" width="1640" height="660" style="display:block;width:100%;height:auto" alt="E를 SVD로 쪼개 나온 R, t 후보 4쌍을 위에서 본 그림: 같은 짝을 삼각측량하면 맞는 후보에서만 3D 점이 두 카메라 앞에 생기고, 나머지 셋은 한쪽 또는 두 카메라 뒤에 생긴다"></div>
   <h3 class="sub">4. 정리: 사진 두 장 → 카메라 자세 · 깊이</h3>
   <div class="pipe" aria-label="단계 정리">
-    <span class="s"><b>사진 2장</b><small>DTU scan 114</small></span><span class="ar">→</span>
-    <span class="s"><b>특징점 검출 ④</b><small>코너 4939 · 4772개</small></span><span class="ar">→</span>
-    <span class="s"><b>매칭 ④</b><small>짝 624쌍 · 틀린 짝 13.1%</small></span><span class="ar">→</span>
-    <span class="s"><b>RANSAC + 8점 ⑤</b><small>틀린 짝을 거르고 F</small></span><span class="ar">→</span>
-    <span class="s"><b>K 벗기기</b><small>F → E (R, t만 남음)</small></span><span class="ar">→</span>
-    <span class="s"><b>E 나누기</b><small>R, t · 이동은 방향만</small></span><span class="ar">→</span>
+    <span class="s"><b>사진 2장</b></span><span class="ar">→</span>
+    <span class="s"><b>특징점 검출 · 매칭 ④</b><small>대응점 쌍</small></span><span class="ar">→</span>
+    <span class="s"><b>RANSAC + 8점 ⑤</b><small>틀린 짝 거르고 F → R, t (이동은 방향만)</small></span><span class="ar">→</span>
     <span class="s"><b>삼각측량 ③</b><small>깊이 · 비율만</small></span>
   </div>
   <div class="problem">
@@ -264,20 +420,21 @@ table.def td.val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-
 <!-- ⑥ SfM + MVS -->
 <section class="step" id="sfm">
   <h2><span class="num">⑥</span>SfM · MVS — 카메라 위치를 모두 구하고, 모든 픽셀의 깊이를 구한다</h2>
-  <h3 class="sub">1. SfM: 사진을 한 장씩 더하고 (PnP + 삼각측량), 마지막에 함께 다듬는다 (번들 조정)</h3>
-  <div class="grid2">
-    <div class="card"><h3>카메라와 점 <small>· DTU scan 114, 카메라 쪽에서 본 그림 · 삼각형 = 카메라 (<span class="c2">분홍 = 새 사진</span>), 회색 고리 = DTU 보정 위치 · <span class="x">주황 = PnP에 쓴 점 (이미 아는 3D 점)</span>, <span class="p">진한 초록 = 새로 생긴 점</span></small></h3><canvas id="sfmv"></canvas></div>
-    <div style="display:grid;gap:12px;min-width:0">
-      <div class="card"><h3>파라미터</h3><div class="defwrap" id="def6"></div></div>
-      <div class="card knobs" aria-label="SfM 손잡이">
-        <label for="k6">사진 수<input id="k6" type="range" min="2" max="12" step="1"><output id="k6o"></output></label>
-        <div class="presets"><button type="button" id="m6-raw">번들 조정 없이</button><button type="button" id="m6-ba">번들 조정 함</button></div>
-        <p class="note">자료: DTU 사진 12장으로 돌린 순차 SfM. 비교를 위해 마지막에 DTU 좌표계에 한 번 맞췄다 (축척 포함).</p>
-      </div>
-    </div>
-  </div>
+  <p class="note"><b>SfM</b>: Structure from Motion · <b>PnP</b>: Perspective-n-Point</p>
+  <h3 class="sub">1. SfM: 모든 카메라를 같은 자(단위)로 놓는다</h3>
+  <ol class="sift-steps">
+    <li><span>⓪</span><div><b>준비</b>: 모든 사진에서 특징점을 찾고, 모든 사진 쌍의 짝을 먼저 찾아 둔다 (④)</div></li>
+    <li><span>①</span><div><b>두 장으로 시작</b>: ⑤ 방법으로 카메라 2대와 첫 3D 점을 구한다 → 두 카메라 간격을 "1"로 정하고, 이 자를 끝까지 쓴다</div></li>
+    <li><span>②</span><div><b>새 사진 붙이기 (PnP)</b>: 새 사진에 보이는, 이미 3D 위치를 아는 점(<span class="x">주황</span>)에 맞춰 새 카메라 위치를 구한다 → 같은 자 "1"이 이어진다. 그다음 삼각측량으로 새 점(<span class="p">초록</span>)을 더하고 반복 \(X \leftrightarrow x \;\Rightarrow\; R,\ t\)</div></li>
+    <li><span>③</span><div><b>번들 조정</b>: 한 장씩 붙일수록 작은 오차가 쌓인다 → 그래서 모든 카메라·점을 함께 움직여, 3D 점을 사진에 다시 찍은 자리와 실제 찍힌 자리의 차이(재투영 오차)를 줄인다
+      <div class="math-block">\[\min_{R,\,t,\,X}\ \sum \big\| x - \text{투영}(R,t,X) \big\|^2\]</div>
+      <p class="note">모든 사진에서, 찍힌 픽셀 x와 3D 점 X를 다시 투영한 자리의 차이(재투영 오차) 합을 줄인다</p>
+    </div></li>
+  </ol>
+  <div class="card"><img src="data/sfm_steps.png" width="1660" height="664" style="display:block;width:100%;height:auto" alt="사진 1·2로 기준 세우기 → 아는 점 A로 사진 3 놓기(PnP) → 사진 2·3으로 새 점 B 만들기 → B로 사진 4 놓고 반복"></div>
   <h3 class="sub">2. MVS: 픽셀마다 에피폴라 선 위를 따라가며 패치를 비교한다 → 가장 닮은 곳이 깊이</h3>
-  <div class="card"><h3>이미지 1 · 이미지 2 <small>· <span class="p">초록 고리 = 깊이 가설의 위치</span>, <span class="i">보라 = x_1의 에피폴라 선 (깊이 480–800 mm)</span></small></h3><canvas id="mvsp"></canvas>
+  <p class="note"><b>MVS</b>: Multi-View Stereo · <b>NCC</b>: Normalized Cross-Correlation</p>
+  <div class="card"><h3>이미지 1 · 이미지 2 <small>· <span class="p">초록 고리 = 깊이 가설의 위치</span>, <span class="i">보라 = \(x_1\)의 에피폴라 선 (깊이 480–800 mm)</span></small></h3><canvas id="mvsp"></canvas>
     <canvas id="mvsc" style="margin-top:8px"></canvas>
     <div class="knobs" style="margin-top:8px">
       <label for="z6"><span class="p">깊이 가설</span><input id="z6" type="range" min="0" max="640" step="1"><output id="z6o"></output></label>
@@ -296,18 +453,229 @@ table.def td.val{font-family:var(--mono);font-variant-numeric:tabular-nums;text-
   </div>
   <div class="problem">
     <b>문제: 깊이 지도는 사진마다 한 장씩 따로 있고, 구멍과 잡음이 있다.</b>
-    <span>여러 장의 깊이 지도를 하나의 면(mesh)으로 합쳐야 한다 → ⑦ 면 만들기 (예정)</span>
+    <span>여러 장의 깊이 지도를 하나의 면(mesh)으로 합쳐야 한다 → ⑦ TSDF · Marching Cubes</span>
   </div>
 </section>
-<div class="pager"><button type="button" id="pgPrev">← 이전</button><span id="pgNum">1 / 3</span><button type="button" id="pgNext" class="go">다음 →</button></div>
+<!-- ⑦ TSDF + Marching Cubes -->
+<section class="step" id="mesh">
+  <h2><span class="num">⑦</span>TSDF · Marching Cubes — 깊이 지도 여러 장을 칸에 합치고, 표면을 뽑아 면(mesh)으로 만든다</h2>
+  <p class="note" style="font-size:.72rem"><b>TSDF</b>: Truncated Signed Distance Function (Curless &amp; Levoy, SIGGRAPH 1996) · <b>Marching Cubes</b>: Lorensen &amp; Cline, SIGGRAPH 1987</p>
+  <h3 class="sub">1. TSDF: 칸마다 표면까지 거리를 적고, 여러 장을 평균한다</h3>
+  <ol class="sift-steps">
+    <li><span>①</span><div>공간을 작은 칸(복셀)으로 나눈다.</div></li>
+    <li><span>②</span><div>깊이 지도마다, 칸이 표면 앞이면 +, 뒤면 −로 거리를 적는다(최대 \(\tau\)에서 자름).</div></li>
+    <li><span>③</span><div>여러 장의 값을 평균한다 → 한 장의 잡음·구멍이 다른 장으로 메워진다.
+      <div class="math-block">\[D(v)=\dfrac{\sum_i w_i\, d_i(v)}{\sum_i w_i}\]</div>
+      <p class="note">\(d_i\): 깊이 지도 \(i\)로 잰 칸 \(v\)의 표면까지 거리(±τ에서 자름) · \(w_i\): 가중치 · 면 = \(D=0\)인 곳</p>
+    </div></li>
+  </ol>
+  <div class="grid2">
+    <div class="card"><h3>위에서 본 단면 <small>· 파랑 + / 빨강 − / 흰색 0 / 회색 관측 없음 · 검정 점 = 정답 윤곽</small></h3><canvas id="tsdf-slice" role="img" aria-label="합친 깊이 지도 수에 따른 표면 앞뒤의 거리와 레이저 스캔 정답 윤곽"></canvas></div>
+    <div style="display:grid;gap:12px;min-width:0">
+      <div class="card knobs" aria-label="TSDF · Marching Cubes 손잡이">
+        <label for="tsdf-count">합친 깊이 지도 수<input id="tsdf-count" type="range" min="1" max="11" step="1" value="1"><output id="tsdf-count-out">1장</output></label>
+        <div class="presets"><button type="button" id="tsdf-contour" aria-pressed="false">표면 선 보기</button></div>
+        <p class="note">바깥 화살표 = 더한 사진의 카메라 방향 · <span class="c2">분홍 = 새로 더한 사진</span></p>
+      </div>
+      <div class="card"><img src="data/tsdf_steps.png" width="560" height="496" style="display:block;width:100%;height:auto" alt="깊이 지도 한 장이 광선 위 칸마다 표면 앞은 +, 뒤는 −로 거리를 적고, 여러 장을 같은 칸끼리 평균하면 값이 0인 곳이 표면이 되는 과정"></div>
+    </div>
+  </div>
+  <h3 class="sub">2. Marching Cubes: 부호가 바뀌는 칸 변에 점을 찍어 잇는다</h3>
+  <ol class="sift-steps">
+    <li><span>①</span><div>칸 꼭짓점의 부호(+/−)를 본다.</div></li>
+    <li><span>②</span><div>부호가 바뀌는 변 위, 값에 비례한 자리에 점을 찍는다: \(t = \dfrac{v_0}{v_0 - v_1}\) (예: \(+0.3\)과 \(-0.1\)이면 \(t = 0.75\), 3/4 지점).</div></li>
+    <li><span>③</span><div>칸 안의 점을 잇는다 → 2D는 선, 3D는 삼각형. 3D는 꼭짓점 8개의 부호 조합 \(2^8 = 256\)가지(대칭으로 묶으면 15가지)마다 그을 삼각형이 표로 정해져 있다.</div></li>
+  </ol>
+  <p style="margin:0"><b>겹침·틈이 없는 이유</b>: 변 위의 점은 그 변 양 끝 값으로만 정해진다 → 변을 공유하는 이웃 칸이 같은 점을 쓴다 → 면이 이어지고, 각 칸의 삼각형은 자기 칸 안에만 있어 겹치지 않는다.</p>
+  <div class="card"><img src="data/mc_why_sign.png" width="1640" height="680" style="display:block;width:100%;height:auto" alt="거리만 있으면 면이 변을 지나는 경우와 비켜 가는 경우가 같은 값이 되지만, 안/밖 부호가 있으면 부호가 바뀌는 변에만 점을 찍어 닫힌 선을 얻는다는 비교 그림, 칸 안의 선은 안 무리와 밖 무리의 경계이고 법선은 안에서 밖을 향한다"></div>
+  <div class="grid2">
+    <div class="card"><h3 class="view-title"><span>칸 하나 <small>· 꼭짓점을 눌러 + / − 바꾸기 · 끌어서 돌리기 · 휠로 확대</small></span><span class="presets"><button type="button" id="mc-single-reset">처음 시점</button></span></h3>
+      <canvas id="mc-single" tabindex="0" role="group" aria-label="꼭짓점의 부호를 바꾸고 돌려 보는 정육면체"></canvas>
+      <div class="presets" id="mc-presets" role="group" aria-label="기본형 1–15"></div>
+      <p id="mc-case-note" class="note" aria-live="polite" style="margin:6px 0 0"></p>
+      <p style="margin:6px 0 0">노란 면 = 잇는 방법이 두 가지인 면. 이웃 칸과 다르게 고르면 틈이 생긴다 (해결: <a href="https://escholarship.org/uc/item/17p025zk" style="color:inherit">Asymptotic Decider</a>, 1991).</p>
+    </div>
+    <div class="card"><h3 class="view-title"><span>칸 27개 <small>· 끌어서 돌리기 · 휠로 확대</small></span><span class="presets"><button type="button" id="mc-grid-reset">처음 시점</button></span></h3>
+      <canvas id="mc-grid" tabindex="0" role="group" aria-label="구 표면을 이루는 27칸. 끌거나 방향키로 돌리고 휠 또는 더하기·빼기 키로 확대·축소"></canvas>
+      <div class="knobs"><label for="mc-spread">칸 떼어 보기<input id="mc-spread" type="range" min="0" max="60" step="1" value="0"><output id="mc-spread-out">0%</output></label></div>
+    </div>
+  </div>
+  <h3 class="sub">3. 한 번에 보기: 깊이 지도 → TSDF → Marching Cubes</h3>
+  <div class="card"><h3 class="view-title"><span>3D <small>· 끌어서 돌리기 · 휠로 확대</small></span><span class="presets"><button type="button" id="tsdf-volume-reset">처음 시점</button></span></h3>
+    <canvas id="tsdf-volume" tabindex="0" role="group" aria-label="깊이 지도에서 거리값을 평균하고 삼각형 면을 만드는 과정. 끌거나 방향키로 돌리고 휠 또는 더하기·빼기 키로 확대·축소"></canvas>
+    <div class="presets" id="tsdf-volume-stages" role="group" aria-label="면 만드는 과정">
+      <button type="button" aria-pressed="true">칸 나누기</button><button type="button" aria-pressed="false">깊이 지도 1장</button><button type="button" aria-pressed="false">여러 장 평균</button><button type="button" aria-pressed="false">0인 자리 찍기</button><button type="button" aria-pressed="false">삼각형으로 잇기</button>
+    </div>
+    <p id="tsdf-volume-note" class="note" aria-live="polite" style="margin:6px 0"></p>
+    <div class="knobs">
+      <label for="tsdf-volume-count">합친 깊이 지도 수<input id="tsdf-volume-count" type="range" min="1" max="8" step="1" value="1" disabled><output id="tsdf-volume-count-out">1장</output></label>
+      <label for="tsdf-volume-layer">보는 층<input id="tsdf-volume-layer" type="range" min="0" max="18" step="1" value="0"><output id="tsdf-volume-layer-out">전체</output></label>
+    </div>
+  </div>
+  <div class="pipe" aria-label="TSDF · Marching Cubes 단계 정리">
+    <span class="s"><b>깊이 지도 N장(⑥)</b></span><span class="ar">→</span>
+    <span class="s"><b>TSDF</b><small>칸에 평균</small></span><span class="ar">→</span>
+    <span class="s"><b>Marching Cubes</b><small>삼각형</small></span><span class="ar">→</span>
+    <span class="s"><b>면(mesh)</b></span>
+  </div>
+  <div class="problem">
+    <b>문제: 민무늬·반짝이는 면은 MVS 깊이가 비거나 틀려서, 합쳐도 구멍과 울퉁불퉁이 남는다.</b>
+    <span>깊이 지도를 거치지 않고, 사진을 직접 다시 그려 보며 3D를 맞추는 방법 → 부록 A 렌더링으로 풀기 (NeRF · Gaussian Splatting)</span>
+  </div>
+</section>
+<!-- ⑧ Rendering -->
+<section class="step" id="render">
+  <h2><span class="num">부록 A</span>렌더링으로 풀기 — 사진을 다시 그려 보고, 실제 사진과 같아지게 3D를 고친다</h2>
+  <p class="note" style="font-size:.72rem"><b>NeRF</b>: Neural Radiance Fields (Mildenhall 외, ECCV 2020) · <b>Gaussian Splatting</b>: 3D Gaussian Splatting (Kerbl 외, SIGGRAPH 2023) · <b>NeuS</b>: Wang 외, NeurIPS 2021</p>
+  <h3 class="sub">1. 공통: 그려 보고 고친다</h3>
+  <div class="pipe" aria-label="렌더링으로 학습하는 반복 과정">
+    <span class="s">카메라 위치 (⑥ SfM)</span><span class="ar">→</span>
+    <span class="s">지금의 3D로 사진 그리기 (렌더링)</span><span class="ar">→</span>
+    <span class="s">실제 사진과 픽셀 색 비교</span><span class="ar">→</span>
+    <span class="s">차이가 줄게 3D 고치기</span><span class="ar">↺ 반복</span>
+  </div>
+  <p style="margin:0">깊이 지도를 따로 만들지 않고, 모든 사진의 픽셀 색을 한꺼번에 맞춘다.</p>
+  <h3 class="sub">2. 픽셀 하나 = 광선 위의 것들을 앞에서부터 쌓은 색</h3>
+  <div class="math-block">\[ C=\sum_i T_i\,\alpha_i\,c_i,\quad T_i=\prod_{j\lt i}(1-\alpha_j) \]</div>
+  <p class="note">α = 그 자리의 불투명도 · T = 앞에서 아직 안 가려진 정도 · c = 색</p>
+  <div class="card"><h3>광선 하나 <small>· 앞에서부터 쌓기</small></h3>
+    <div class="presets" role="group" aria-label="공간을 나타내는 방법"><button type="button" id="ray-nerf" aria-pressed="true">NeRF: 광선 위 점</button><button type="button" id="ray-gaussian" aria-pressed="false">Gaussian Splatting: 타원체</button></div>
+    <canvas id="render-ray" role="img" aria-label="앞 물체와 뒤 벽을 앞에서부터 쌓은 색, 남은 투과량과 사진 픽셀과의 차이"></canvas>
+    <div class="knobs">
+      <label id="ray-count-label" for="ray-count">점 개수<input id="ray-count" type="range" min="4" max="64" step="1" value="16"><output id="ray-count-out">16</output></label>
+      <label for="ray-opacity">앞 물체 불투명도<input id="ray-opacity" type="range" min="0" max="1" step="0.001" value="0.85"></label>
+    </div>
+    <div class="presets" style="margin-top:8px"><button type="button" id="ray-learn">고치기 (학습 한 번)</button><button type="button" id="ray-reset">처음으로</button></div>
+  </div>
+  <h3 class="sub">3. 두 방법</h3>
+  <div class="grid2">
+    <div class="card"><h3>NeRF <small>· 공간 = 신경망 하나</small></h3>
+      <ol class="sift-steps">
+        <li><span>①</span><div>신경망에 점 (x, y, z)와 보는 방향을 넣으면 색과 밀도가 나온다.</div></li>
+        <li><span>②</span><div>픽셀마다 광선 위 점 수백 개를 신경망에 물어 쌓는다 → 느리다.</div></li>
+        <li><span>③</span><div>밀도는 경계가 흐려 면을 뽑으면 지저분하다 → NeuS: 밀도 대신 부호 거리(⑦ TSDF와 같은 뜻)를 배워, 0인 곳을 Marching Cubes로 꺼낸다.</div></li>
+      </ol>
+    </div>
+    <div class="card"><h3>Gaussian Splatting <small>· 공간 = 반투명 타원체 수백만 개</small></h3>
+      <ol class="sift-steps">
+        <li><span>①</span><div>⑥ SfM의 점마다 타원체 하나: 위치 · 크기와 방향 · 불투명도 · 색.</div></li>
+        <li><span>②</span><div>화면에 타원으로 찍고 깊이 순으로 쌓는다 → 신경망에 묻지 않아 실시간으로 그린다.</div></li>
+        <li><span>③</span><div>학습하며 모자란 곳은 쪼개거나 복제하고, 투명해진 것은 지운다.</div></li>
+        <li><span>④</span><div>한계: 면이 없다(타원체 구름) → 면을 따로 꺼내야 한다.</div></li>
+      </ol>
+    </div>
+  </div>
+  <h3 class="sub">4. 최근 연구 (2026): 타원체에서 면 꺼내기</h3>
+  <p style="margin:0">GGGS · Gaussian Wrapping · MeshSplatting → <a href="#recent" style="color:inherit">부록 B에서 직접 움직여 본다.</a></p>
+  <h3 class="sub">5. 정리</h3>
+  <div class="pipe render-compare" aria-label="렌더링과 Mesh 만들기 단계 정리">
+    <b class="route">⑥⑦ 길</b>
+    <span class="s">사진 N장 + 카메라</span><span class="ar">→</span>
+    <span class="s changed"><b>MVS 깊이 지도 (⑥)</b></span><span class="ar">→</span>
+    <span class="s">TSDF</span><span class="ar">→</span>
+    <span class="s">Marching Cubes</span><span class="ar">→</span>
+    <span class="s">면(mesh)</span>
+    <b class="route">렌더링 길</b>
+    <span class="s">사진 N장 + 카메라</span><span class="ar">→</span>
+    <span class="s changed"><b>렌더링하며 학습</b><small>NeRF · Gaussian Splatting</small><span>→ 깊이 그리기</span></span><span class="ar">→</span>
+    <span class="s">TSDF</span><span class="ar">→</span>
+    <span class="s">Marching Cubes</span><span class="ar">→</span>
+    <span class="s">면(mesh)</span>
+    <p class="note">▲ 여기만 바뀐다 (NeRF · Gaussian Splatting)</p>
+  </div>
+</section>
+<!-- ⑨ Recent surface reconstruction -->
+<section class="step" id="recent">
+  <h2><span class="num">부록 B</span>최근 연구 (2026) — 타원체에서 면을 얻는 세 가지 방법</h2>
+  <p class="note" style="font-size:.72rem"><b>GGGS</b>: Geometry-Grounded Gaussian Splatting (Zhang 외, arXiv 2601.17835 · 학회 미확인) · <b>Gaussian Wrapping</b>: From Blobs to Spokes (Gomez 외, ECCV 2026) · <b>MeshSplatting</b>: Held 외, CVPR 2026 · <b>Objects as Volumes</b>: Bailey Miller, Hanyu Chen, Alice Lai, Ioannis Gkioulekas, CVPR 2024</p>
+  <div class="grid3">
+    <div class="card"><b>GGGS</b> · 깊이를 매끈하게 → ⑦ TSDF</div>
+    <div class="card"><b>Gaussian Wrapping</b> · 방향 붙은 타원체로 감싸 → 닫힌 면</div>
+    <div class="card"><b>MeshSplatting</b> · 처음부터 삼각형 → 불투명 mesh</div>
+  </div>
+  <p style="margin:0">GGGS와 Gaussian Wrapping의 바탕: 물체를 “확률적 고체”로 보면 빈 정도 \(v\)에서 감쇠 \(\sigma=|\omega\cdot\nabla\log v|\)가 나온다 (Objects as Volumes) → 그림 그리기와 면(\(v=0.5\))이 같은 식에서 나온다.</p>
+  <h3 class="sub">1. GGGS — 타원체를 확률적 고체로 보고, 깊이를 매끈하게</h3>
+  <p class="note" style="font-size:.72rem">저자: Baowen Zhang, Chenxing Jiang, Heng Li, Shaojie Shen, Ping Tan · arXiv <a href="https://arxiv.org/abs/2601.17835" style="color:inherit">2601.17835</a> (공개 2026-01-25, 수정 2026-01-27) · 학회: 미확인</p>
+  <ol class="sift-steps">
+    <li><span>①</span><div>타원체 하나 = 속이 흐릿하게 찬 고체: 빈 정도 \(v=\sqrt{1-G}\). 이렇게 두면 기존 Gaussian Splatting과 같은 그림이 나온다.</div></li>
+    <li><span>②</span><div>광선 위 투과율 T가 타원체 안에서도 연속으로 줄어든다 → T = 0.5인 자리(중간값 깊이)를 이분 탐색으로 찾는다.</div></li>
+    <li><span>③</span><div>이 깊이 지도 여러 장 → ⑦ TSDF + Marching Cubes로 면.</div></li>
+  </ol>
+  <div class="card"><h3>깊이 비교 <small>· 옆에서 본 장면, 광선마다 깊이</small></h3>
+    <p class="note"><span style="color:var(--x)">평균 깊이 ━</span> · <span style="color:var(--img)">기존 중간값 깊이 ┄</span> · <span style="color:var(--p)">GGGS 깊이 ━</span></p>
+    <canvas id="gg-depth9" role="img" aria-label="기울어진 표면의 평균 깊이, 기존 중간값 깊이와 연속 투과율로 구한 GGGS 깊이 비교"></canvas>
+    <div class="knobs"><div class="presets"><button type="button" id="gg-floater9" aria-pressed="true">허공의 타원체</button></div><label for="gg-ray9">광선 고르기<input id="gg-ray9" type="range" min="0" max="119" step="1" value="59"></label></div>
+    <p class="note"><span style="color:var(--img)">기존 투과율 ┄</span> · <span style="color:var(--p)">GGGS 투과율 ━</span> · 옅은 점선 = 중간선</p>
+    <canvas id="gg-trans9" role="img" aria-label="고른 광선의 이산 투과율 계단과 GGGS 연속 투과율, 중간선과 세 깊이 위치"></canvas>
+    <p class="note">볼 것: 허공의 타원체를 켜면 평균 깊이는 그쪽으로 끌리고, 기존 중간값은 계단이 지고, GGGS는 매끈하다.</p>
+  </div>
+  <h3 class="sub">2. Gaussian Wrapping — 방향 붙은 타원체로 감싸, 닫힌 면</h3>
+  <p class="note" style="font-size:.72rem">저자: Diego Gomez*, Antoine Guédon*, Nissim Maruani, Bingchen Gong, Maks Ovsjanikov (*공동 1저자) · arXiv <a href="https://arxiv.org/abs/2604.07337" style="color:inherit">2604.07337</a> (공개 2026-04-08) · 학회: ECCV 2026</p>
+  <ol class="sift-steps">
+    <li><span>①</span><div>타원체마다 바깥을 가리키는 법선을 하나 더 배운다 → 물체를 껍데기처럼 감싼다(얇은 살도 앞뒤로).</div></li>
+    <li><span>②</span><div>빈 정도 v(x) = x에 닿는 학습 카메라 광선 중 가장 덜 가려진 것의 투과율(타원체마다 최대점을 지나면 더 줄지 않음).</div></li>
+    <li><span>③</span><div>타원체마다 점 2개(중심 = 안, 중심 + 3s·법선 = 밖) → Delaunay 사면체 → 변 위 v = 0.5 자리를 이분 탐색 → 닫힌 면(Marching Tetrahedra).</div></li>
+  </ol>
+  <div class="card"><h3>논문 그림 <small>· 그림 3 방법 흐름 · 그림 1 결과 (자전거 살까지 닫힌 면)</small></h3>
+    <img src="data/gaussian_wrapping_fig3.png" width="1433" height="251" style="display:block;width:100%;height:auto" alt="방향 붙은 타원체에서 법선장과 빈 정도를 구하고 Marching Tetrahedra로 닫힌 면을 얻는 방법 흐름">
+    <p class="note">방향 붙은 타원체 → 법선장·빈 정도 v → Marching Tetrahedra → (선택) 적응형 면</p>
+    <div style="margin-top:12px">
+      <img src="data/gaussian_wrapping_fig1.png" width="1439" height="564" style="display:block;width:100%;height:auto" alt="여러 시점 사진으로 복원한 자전거의 닫힌 mesh 결과, 왼쪽은 회색 면이고 가운데는 색 입힌 면이며 얇은 자전거 살까지 복원">
+      <p class="note">여러 시점 사진 → 닫힌 mesh (왼쪽 회색 = 면, 가운데 = 색 입힌 면)</p>
+    </div>
+    <p class="note">그림: Gomez 외, From Blobs to Spokes (ECCV 2026) 그림 1·3 · <a href="https://arxiv.org/abs/2604.07337" style="color:inherit">arXiv 2604.07337</a></p>
+  </div>
+  <div class="card"><h3>감싸서 닫기 <small>· 2D로 줄인 그림 (사면체 → 삼각형)</small></h3>
+    <div class="presets" id="wrap-stages9" role="group" aria-label="감싸서 면 만드는 과정"><button type="button" aria-pressed="true">타원체와 법선</button><button type="button" aria-pressed="false">빈 정도 v</button><button type="button" aria-pressed="false">점 2개씩 + 삼각망</button><button type="button" aria-pressed="false">0.5 자리 잇기</button></div>
+    <canvas id="wrap-scene9" role="img" aria-label="둥근 덩어리와 얇은 막대를 감싼 타원체, 빈 정도, 후보 점과 삼각망에서 닫힌 선을 꺼내는 과정"></canvas>
+    <div class="presets" role="group" aria-label="점 고르기"><span>점 고르기:</span><button type="button" id="wrap-two9" aria-pressed="true">2개 (Gaussian Wrapping)</button><button type="button" id="wrap-five9" aria-pressed="false">5개 (기존 방식)</button></div>
+  </div>
+  <h3 class="sub">3. MeshSplatting — 처음부터 삼각형으로, 끝에는 불투명한 mesh</h3>
+  <p class="note" style="font-size:.72rem">저자: Jan Held, Sanghyun Son, Renaud Vandeghen, Daniel Rebain, Matheus Gadelha, Yi Zhou, Anthony Cioppa, Ming C. Lin, Marc Van Droogenbroeck, Andrea Tagliasacchi · arXiv <a href="https://arxiv.org/abs/2512.06818" style="color:inherit">2512.06818</a> (공개 2025-12-07) · 학회: CVPR 2026</p>
+  <ol class="sift-steps">
+    <li><span>①</span><div>SfM 점마다 반투명 삼각형으로 시작한다(서로 안 붙은 “삼각형 수프”) → 렌더링하며 학습.</div></li>
+    <li><span>②</span><div>제한 Delaunay로 꼭짓점을 이어 붙인다(새 점을 만들지 않음) → 이웃 삼각형이 꼭짓점을 공유.</div></li>
+    <li><span>③</span><div>학습하며 불투명도 하한 \(O_t\)를 0 → 1, 경계 부드러움 σ를 1 → 0으로 → 끝에는 꽉 찬 불투명 삼각형 = 게임 엔진에 바로 넣는 mesh.</div></li>
+  </ol>
+  <div class="card"><h3>논문 그림 <small>· 1단계 수프 → 2단계 연결·불투명 (위 색, 아래 법선 지도)</small></h3>
+    <img src="data/meshsplatting_fig3.png" width="1400" height="511" style="display:block;width:100%;height:auto" alt="SfM 점에서 시작한 반투명·떨어진 삼각형이 제한 Delaunay로 이어지고 불투명한 삼각형 면이 되는 네 단계, 위는 색 렌더, 아래는 법선 지도">
+    <p class="note">그림: Held 외, MeshSplatting (CVPR 2026) 그림 3 · <a href="https://arxiv.org/abs/2512.06818" style="color:inherit">arXiv 2512.06818</a> · CC BY 4.0</p>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>삼각형 하나 <small>· 화면에 찍힌 모양</small></h3>
+      <canvas id="mesh-window9" role="img" aria-label="학습하면서 흐릿하고 반투명한 삼각형이 꽉 찬 불투명 삼각형으로 변하는 창 함수"></canvas>
+      <div class="knobs"><label for="mesh-progress9">학습 진행<input id="mesh-progress9" type="range" min="0" max="1" step="0.01" value="0"></label></div>
+    </div>
+    <div class="card"><h3>수프 → 연결 <small>· 2D 단면 (삼각형 → 선분)</small></h3>
+      <canvas id="mesh-soup9" role="img" aria-label="수프 선분의 같은 끝점으로 Delaunay 삼각망을 만들고 쌍대 Voronoi 변의 교차로 연결선을 고르는 과정"></canvas>
+      <div class="presets" id="soup-stages9" role="group" aria-label="수프에서 연결된 면으로"><button type="button" aria-pressed="true">수프</button><button type="button" aria-pressed="false">Delaunay</button><button type="button" aria-pressed="false">제한 Delaunay</button></div>
+    </div>
+  </div>
+  <h3 class="sub">4. 정리</h3>
+  <div class="grid3">
+    <div class="card"><h3>GGGS</h3><p class="note">면 = 깊이 지도 → ⑦ TSDF<br>강점: 깊이가 매끈하고 시점끼리 맞는다</p></div>
+    <div class="card"><h3>Gaussian Wrapping</h3><p class="note">면 = v = 0.5를 Marching Tetrahedra로<br>강점: 닫힌 면, 얇은 구조, 가벼운 mesh</p></div>
+    <div class="card"><h3>MeshSplatting</h3><p class="note">면 = 학습한 삼각형 그대로<br>강점: 불투명 mesh, 게임 엔진에 바로</p></div>
+  </div>
+</section>
+<div class="pager"><button type="button" id="pgPrev">← 이전</button><span id="pgNum">1 / 8</span><button type="button" id="pgNext" class="go">다음 →</button></div>
 </div>
 
+<script src="data/katex/katex.min.js"></script>
+<script src="data/katex/contrib/auto-render.min.js"></script>
 <script src="data/numeric.min.js"></script>
 <script src="data/dtu_pair.js"></script>
 <script src="data/feat.js"></script>
 <script src="data/dtu_cam.js"></script>
 <script src="data/sfm_mvs.js"></script>
+<script src="data/tsdf_mc.js"></script>
 <script>
+const mathOptions={throwOnError:false,strict:'ignore',trust:c=>c.command==='\\htmlClass'};
+const mathCache=new Map();
+function math(strings){const tex=String.raw(strings);
+  if(!mathCache.has(tex))mathCache.set(tex,katex.renderToString(tex,mathOptions));
+  return mathCache.get(tex)}
+renderMathInElement(document.body,{...mathOptions,delimiters:[{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}]});
 const $=id=>document.getElementById(id);
 const tok=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const r2=v=>Math.abs(v)<0.005?0:v;
@@ -321,23 +689,76 @@ const CX=320,WIDTH=640;
 function setup(cv,ratio,view){const dpr=window.devicePixelRatio||1,w=cv.clientWidth||300,h=Math.round(w*ratio);
   if(cv.width!==Math.round(w*dpr)||cv.height!==Math.round(h*dpr)){cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);cv.style.height=h+'px'}
   const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+  ctx.labelLayout={w,h,labels:[],boxes:[],marks:[],lines:[]};
   if(view){const sc=Math.min(w/(view.xmax-view.xmin),h/(view.zmax-view.zmin)),ox=(w-sc*(view.xmax-view.xmin))/2,oz=(h-sc*(view.zmax-view.zmin))/2;
     view.to=(x,z)=>[ox+(x-view.xmin)*sc,h-oz-(z-view.zmin)*sc];view.from=(X,Y)=>[(X-ox)/sc+view.xmin,(h-oz-Y)/sc+view.zmin]}
   return {ctx,w,h}}
-function L(ctx,v,a,b,col,wd=1.5,dash){ctx.save();ctx.strokeStyle=col;ctx.lineWidth=wd;if(dash)ctx.setLineDash(dash);ctx.beginPath();ctx.moveTo(...v.to(...a));ctx.lineTo(...v.to(...b));ctx.stroke();ctx.restore()}
-function A(ctx,v,a,b,col,wd=2.2){L(ctx,v,a,b,col,wd);const p=v.to(...a),q=v.to(...b),g=Math.atan2(q[1]-p[1],q[0]-p[0]),k=8;ctx.save();ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(...q);ctx.lineTo(q[0]-k*Math.cos(g-.4),q[1]-k*Math.sin(g-.4));ctx.lineTo(q[0]-k*Math.cos(g+.4),q[1]-k*Math.sin(g+.4));ctx.closePath();ctx.fill();ctx.restore()}
-function T(ctx,v,p,s,col,dx=6,dy=-6,bold,align){const q=v.to(...p);ctx.save();ctx.fillStyle=col;ctx.font=`${bold?'600 ':''}12.5px ${tok('--sans')}`;if(align)ctx.textAlign=align;ctx.fillText(s,q[0]+dx,q[1]+dy);ctx.restore()}
-function P(ctx,v,p,col,r=6,al=1){const q=v.to(...p);ctx.save();ctx.globalAlpha=al;ctx.fillStyle=col;ctx.beginPath();ctx.arc(q[0],q[1],r,0,7);ctx.fill();ctx.restore()}
+function L(ctx,v,a,b,col,wd=1.5,dash){const p=v.to(...a),q=v.to(...b);
+  // 격자는 캔버스 전체를 가르므로 글자 배치 장애물에서 제외한다.
+  if(wd>=1&&col!==tok('--grid')&&(!dash||!dash.length))ctx.labelLayout.lines.push({a:p,b:q,width:wd});
+  ctx.save();ctx.strokeStyle=col;ctx.lineWidth=wd;if(dash)ctx.setLineDash(dash);ctx.beginPath();ctx.moveTo(...p);ctx.lineTo(...q);ctx.stroke();ctx.restore()}
+function A(ctx,v,a,b,col,wd=2.2){L(ctx,v,a,b,col,wd);const p=v.to(...a),q=v.to(...b),g=Math.atan2(q[1]-p[1],q[0]-p[0]),k=8,head=[q,[q[0]-k*Math.cos(g-.4),q[1]-k*Math.sin(g-.4)],[q[0]-k*Math.cos(g+.4),q[1]-k*Math.sin(g+.4)]];
+  reserveMark(ctx,head);ctx.save();ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(...q);ctx.lineTo(...head[1]);ctx.lineTo(...head[2]);ctx.closePath();ctx.fill();ctx.restore()}
+function canvasText(ctx,s,x,y,outline=false,measure=false){
+  const parts=[];let end=0;
+  for(const m of s.matchAll(/([A-Za-z])_(?:\{([^{}]+)\}|([A-Za-z0-9]+))/g)){
+    parts.push([s.slice(end,m.index)+m[1],false],[m[2]??m[3],true]);end=m.index+m[0].length}
+  if(!parts.length){if(measure){const m=ctx.measureText(s);return {left:x-m.actualBoundingBoxLeft,top:y-m.actualBoundingBoxAscent,right:x+m.actualBoundingBoxRight,bottom:y+m.actualBoundingBoxDescent}}
+    if(outline)ctx.strokeText(s,x,y);ctx.fillText(s,x,y);return}
+  parts.push([s.slice(end),false]);ctx.save();
+  const font=ctx.font,size=parseFloat(font.match(/([\d.]+)px/)[1]),small=font.replace(/[\d.]+px/,size*.75+'px');
+  const widths=parts.map(([text,sub])=>{ctx.font=sub?small:font;return ctx.measureText(text).width}),width=widths.reduce((a,b)=>a+b,0);
+  if(ctx.textAlign==='center')x-=width/2;else if(ctx.textAlign==='right')x-=width;
+  ctx.textAlign='left';
+  const bounds={left:Infinity,top:Infinity,right:-Infinity,bottom:-Infinity};
+  parts.forEach(([text,sub],i)=>{ctx.font=sub?small:font;const yy=y+(sub?size*.25:0);
+    if(measure){const m=ctx.measureText(text);bounds.left=Math.min(bounds.left,x-m.actualBoundingBoxLeft);bounds.top=Math.min(bounds.top,yy-m.actualBoundingBoxAscent);bounds.right=Math.max(bounds.right,x+m.actualBoundingBoxRight);bounds.bottom=Math.max(bounds.bottom,yy+m.actualBoundingBoxDescent)}
+    else{if(outline)ctx.strokeText(text,x,yy);ctx.fillText(text,x,yy)}x+=widths[i]});ctx.restore();return bounds}
+function T(ctx,v,p,s,col,dx=6,dy=-6,bold,align,priority=1,tick=false){const q=v.to(...p);
+  ctx.labelLayout.labels.push({s,col,x:q[0]+dx,y:q[1]+dy,font:`${bold?'600 ':''}12.5px ${tok('--sans')}`,align:align||ctx.textAlign,priority,tick})}
+function reserveMark(ctx,points,pad=0){const xs=points.map(p=>p[0]),ys=points.map(p=>p[1]);
+  ctx.labelLayout.marks.push({left:Math.min(...xs)-pad,top:Math.min(...ys)-pad,right:Math.max(...xs)+pad,bottom:Math.max(...ys)+pad})}
+function lineHitsBox(box,line){const r=line.width/2,left=box.left-r,right=box.right+r,top=box.top-r,bottom=box.bottom+r,[ax,ay]=line.a,[bx,by]=line.b;
+  if(Math.max(ax,bx)<left||Math.min(ax,bx)>right||Math.max(ay,by)<top||Math.min(ay,by)>bottom)return false;
+  const side=(x,y)=>(bx-ax)*(y-ay)-(by-ay)*(x-ax),sides=[side(left,top),side(right,top),side(right,bottom),side(left,bottom)];
+  return !sides.every(s=>s>0)&&!sides.every(s=>s<0)}
+function drawLabels(ctx){const {w,h,labels,boxes,marks,lines}=ctx.labelLayout;
+  const overlaps=(a,b)=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;
+  const directions=[[0,-1],[0,1],[-1,0],[1,0],[-1,-1],[1,-1],[-1,1],[1,1]];
+  // 눈금은 먼저 해당 위치 주변에, 나머지는 P·카메라 이름 → 일반 글자 → 축 값 순으로 배치한다.
+  for(const label of labels.sort((a,b)=>a.priority-b.priority)){
+    ctx.save();ctx.fillStyle=label.col;ctx.font=label.font;ctx.textAlign=label.align;
+    const b=canvasText(ctx,label.s,0,0,false,true),pad=3;
+    const tryAt=(x,y)=>{x=Math.max(pad-b.left,Math.min(w-pad-b.right,x));y=Math.max(pad-b.top,Math.min(h-pad-b.bottom,y));
+      const box={left:x+b.left-pad,top:y+b.top-pad,right:x+b.right+pad,bottom:y+b.bottom+pad};
+      if(boxes.some(other=>overlaps(box,other))||marks.some(mark=>overlaps(box,mark))||lines.some(line=>lineHitsBox(box,line)))return false;
+      boxes.push(box);canvasText(ctx,label.s,x,y);return true};
+    const xs=label.tick?[label.x,label.x-b.right-pad-4,label.x-b.left+pad+4]:[label.x];
+    const tryNear=(dx,dy)=>xs.some(x=>tryAt(x+dx,label.y+dy));
+    let placed=tryNear(0,0)||(label.tick&&tryNear(0,32));
+    const step=label.tick?8:16;
+    for(let distance=step;!placed&&distance<=128;distance+=step){
+      for(const [dx,dy] of label.tick?[[0,-1],[0,1]]:directions){if(tryNear(dx*distance,dy*distance)){placed=true;break}}}
+    // 가까운 후보가 막히면 캔버스 전체의 빈 공간을 찾는다.
+    for(let y=pad-b.top;!placed&&y<=h-pad-b.bottom;y+=8){
+      for(const x of label.tick?xs:[]){if(tryAt(x,y)){placed=true;break}}
+      if(!label.tick)for(let x=pad-b.left;x<=w-pad-b.right;x+=8){if(tryAt(x,y)){placed=true;break}}}
+    ctx.restore()}}
+function P(ctx,v,p,col,r=6,al=1){const q=v.to(...p);reserveMark(ctx,[q],r);ctx.save();ctx.globalAlpha=al;ctx.fillStyle=col;ctx.beginPath();ctx.arc(q[0],q[1],r,0,7);ctx.fill();ctx.restore()}
+function worldOrigin(ctx,v,p,label){const [x,y]=v.to(...p),{w,h}=ctx.labelLayout;
+  if(x-7<0||x+7>w||y-7<0||y+7>h)return;
+  const col=tok('--bad');P(ctx,v,p,col,7);T(ctx,v,p,label,col,-46,16)}
 function grid(ctx,v,col){for(let i=-8;i<=10;i++){L(ctx,v,[i,-8],[i,10],col,1);L(ctx,v,[-8,i],[10,i],col,1)}}
 function cam(ctx,v,C,right,fwd,col,fov=true){
   if(fov){const h=35*Math.PI/180,ca=Math.cos(h),sa=Math.sin(h),Ln=12,d1=[fwd[0]*ca+right[0]*sa,fwd[1]*ca+right[1]*sa],d2=[fwd[0]*ca-right[0]*sa,fwd[1]*ca-right[1]*sa];
     ctx.save();ctx.fillStyle=tok('--fov');ctx.beginPath();ctx.moveTo(...v.to(...C));ctx.lineTo(...v.to(C[0]+d1[0]*Ln,C[1]+d1[1]*Ln));ctx.lineTo(...v.to(C[0]+d2[0]*Ln,C[1]+d2[1]*Ln));ctx.closePath();ctx.fill();ctx.restore()}
   const b=.2,p1=[C[0]-fwd[0]*b+right[0]*b,C[1]-fwd[1]*b+right[1]*b],p2=[C[0]-fwd[0]*b-right[0]*b,C[1]-fwd[1]*b-right[1]*b];
+  reserveMark(ctx,[v.to(...C),v.to(...p1),v.to(...p2)]);
   ctx.save();ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(...v.to(...C));ctx.lineTo(...v.to(...p1));ctx.lineTo(...v.to(...p2));ctx.closePath();ctx.fill();ctx.restore()}
 function strip(cv,dots){const {ctx,w,h}=setup(cv,.17),pad=16,y0=20,bh=h-y0-24,px=p=>pad+(p/WIDTH)*(w-2*pad),im=tok('--img'),mut=tok('--muted');
   ctx.fillStyle=tok('--grid');ctx.fillRect(px(0),y0,px(WIDTH)-px(0),bh);ctx.strokeStyle=im;ctx.lineWidth=1.5;ctx.strokeRect(px(0),y0,px(WIDTH)-px(0),bh);
   ctx.font=`11.5px ${tok('--mono')}`;ctx.fillStyle=mut;ctx.textAlign='center';[0,160,320,480,640].forEach(p=>ctx.fillText(String(p),px(p),y0+bh+15));
-  ctx.setLineDash([3,3]);ctx.strokeStyle=mut;ctx.beginPath();ctx.moveTo(px(CX),y0);ctx.lineTo(px(CX),y0+bh);ctx.stroke();ctx.setLineDash([]);ctx.fillText('c_x = 320',px(CX),13);
+  ctx.setLineDash([3,3]);ctx.strokeStyle=mut;ctx.beginPath();ctx.moveTo(px(CX),y0);ctx.lineTo(px(CX),y0+bh);ctx.stroke();ctx.setLineDash([]);canvasText(ctx,'c_x = 320',px(CX),13);
   let out=false;dots.forEach(d=>{if(d.u<0||d.u>WIDTH){out=true;return}ctx.save();ctx.globalAlpha=d.al??1;ctx.beginPath();ctx.arc(px(d.u),y0+bh/2,d.r||7,0,7);if(d.ring){ctx.strokeStyle=d.col;ctx.lineWidth=2.5;ctx.stroke()}else{ctx.fillStyle=d.col;ctx.fill()}ctx.restore()});
   if(out&&dots.every(d=>d.u<0||d.u>WIDTH)){ctx.fillStyle=im;ctx.fillText('이미지 밖',w/2,y0+bh/2+4)}}
 
@@ -347,10 +768,10 @@ const K1=['px','pz','cx','cz','th'];
 function sync1(){K1.forEach(k=>$(k).value=S1[k])}
 K1.forEach(k=>$(k).addEventListener('input',e=>{S1[k]=parseFloat(e.target.value);renderAll()}));
 const row=(sym,mean,val)=>`<tr><th>${sym}</th><td>${mean}</td><td class="val">${val}</td></tr>`;
-const W1={xmin:-1.5,xmax:5.5,zmin:-1.2,zmax:5.4},V1={xmin:-3.5,xmax:3.5,zmin:-1,zmax:5.6};
+const W1={xmin:-1.5,xmax:5.5,zmin:-1.2,zmax:5.4},V1={xmin:-3.5,xmax:3.5,zmin:-1.5,zmax:5.6};
 function legs(ctx,v,C,r,fw,xc,zc){const X=[C[0]+r[0]*xc,C[1]+r[1]*xc],Z=[C[0]+fw[0]*zc,C[1]+fw[1]*zc],Pp=[X[0]+fw[0]*zc,X[1]+fw[1]*zc];
   L(ctx,v,Pp,X,tok('--z'),1.1,[5,4]);L(ctx,v,Pp,Z,tok('--x'),1.1,[5,4]);L(ctx,v,C,X,tok('--x'),4.5);L(ctx,v,C,Z,tok('--z'),4.5);
-  T(ctx,v,[(C[0]+X[0])/2,(C[1]+X[1])/2],'x_c '+f2(xc),tok('--x'),-20,18,true);T(ctx,v,[(C[0]+Z[0])/2,(C[1]+Z[1])/2],'z_c '+f2(zc),tok('--z'),8,0,true)}
+  T(ctx,v,[(C[0]+X[0])/2,(C[1]+X[1])/2],'x_c '+f2(xc),tok('--x'),-20,18,true,undefined,2);T(ctx,v,[(C[0]+Z[0])/2,(C[1]+Z[1])/2],'z_c '+f2(zc),tok('--z'),8,0,true,undefined,2)}
 function render1(){
   K1.slice(0,4).forEach(k=>$(k+'o').textContent=f2(S1[k]));$('tho').textContent=S1.th+'°';
   const t=S1.th*Math.PI/180,c=Math.cos(t),s=Math.sin(t),a=S1.px-S1.cx,b=S1.pz-S1.cz,xc=c*a+s*b,zc=-s*a+c*b;
@@ -360,27 +781,29 @@ function render1(){
   A(ctx,W1,[0,0],[1.1,0],mut,1.5);A(ctx,W1,[0,0],[0,1.1],mut,1.5);T(ctx,W1,[1.1,0],'X',mut,4,14);T(ctx,W1,[0,1.1],'Z',mut,6,0);
   cam(ctx,W1,[S1.cx,S1.cz],r,fw,cm);legs(ctx,W1,[S1.cx,S1.cz],r,fw,xc,zc);
   A(ctx,W1,[S1.cx,S1.cz],[S1.cx+r[0],S1.cz+r[1]],tok('--x'));A(ctx,W1,[S1.cx,S1.cz],[S1.cx+fw[0],S1.cz+fw[1]],tok('--z'));
-  L(ctx,W1,[S1.cx,S1.cz],[S1.px,S1.pz],ink,1);P(ctx,W1,[S1.px,S1.pz],pc,7);T(ctx,W1,[S1.px,S1.pz],`P (${f1(S1.px)}, ${f1(S1.pz)})`,pc,9,-8,true);
-  T(ctx,W1,[S1.cx,S1.cz],`카메라 중심 C (${f1(S1.cx)}, ${f1(S1.cz)})`,cm,9,20,true);
+  L(ctx,W1,[S1.cx,S1.cz],[S1.px,S1.pz],ink,1);P(ctx,W1,[S1.px,S1.pz],pc,7);T(ctx,W1,[S1.px,S1.pz],`P (${f1(S1.px)}, ${f1(S1.pz)})`,pc,9,-8,true,undefined,0);
+  T(ctx,W1,[S1.cx,S1.cz],`카메라 중심 C (${f1(S1.cx)}, ${f1(S1.cz)})`,cm,9,20,true,undefined,0);
+  worldOrigin(ctx,W1,[0,0],'월드 원점');drawLabels(ctx);
   const toC=(x,z)=>{const p=x-S1.cx,q=z-S1.cz;return [c*p+s*q,-s*p+c*q]};
   ({ctx}=setup($('v1'),.86,V1));grid(ctx,V1,gr);
   ctx.save();ctx.globalAlpha=.5;for(let i=-2;i<=7;i++){L(ctx,V1,toC(i,-2),toC(i,7),mut,.6,[2,4]);L(ctx,V1,toC(-2,i),toC(7,i),mut,.6,[2,4])}ctx.restore();
-  A(ctx,V1,toC(0,0),toC(1.1,0),mut,1.5);A(ctx,V1,toC(0,0),toC(0,1.1),mut,1.5);T(ctx,V1,toC(1.1,0),'X',mut,4,14);T(ctx,V1,toC(0,1.1),'Z',mut,6,0);T(ctx,V1,toC(0,0),'월드 원점',mut,-46,16);
+  A(ctx,V1,toC(0,0),toC(1.1,0),mut,1.5);A(ctx,V1,toC(0,0),toC(0,1.1),mut,1.5);T(ctx,V1,toC(1.1,0),'X',mut,4,14);T(ctx,V1,toC(0,1.1),'Z',mut,6,0);
   cam(ctx,V1,[0,0],[1,0],[0,1],cm);legs(ctx,V1,[0,0],[1,0],[0,1],xc,zc);A(ctx,V1,[0,0],[1,0],tok('--x'));A(ctx,V1,[0,0],[0,1],tok('--z'));
-  P(ctx,V1,[xc,zc],pc,7);T(ctx,V1,[xc,zc],`P (${f2(xc)}, ${f2(zc)})`,pc,9,-8,true);T(ctx,V1,[0,0],'카메라',cm,-20,22,true);
+  P(ctx,V1,[xc,zc],pc,7);T(ctx,V1,[xc,zc],`P (${f2(xc)}, ${f2(zc)})`,pc,9,-8,true,undefined,0);T(ctx,V1,[0,0],'카메라',cm,-20,22,true,undefined,0);
+  worldOrigin(ctx,V1,toC(0,0),`월드 원점 = t (${f2(t1)}, ${f2(t2)})`);drawLabels(ctx);
   $('def1').innerHTML=`<table class="def">
-   ${row('<span class="p">P</span>','3D 점 · 월드 좌표',mat([[S1.px],[S1.pz]]))}
-   ${row('<span class="c">C</span>','카메라 중심 · 월드 좌표계 기준 카메라 위치 (= −Rᵀ t)',mat([[S1.cx],[S1.cz]]))}
-   ${row('<span class="c">θ</span>','회전각 (반시계 +)',S1.th+'°')}
-   ${row('R','회전 행렬 (행: 카메라 x축, z축)',mat([[c,s],[-s,c]],['x','z']))}
-   ${row('t','이동 벡터 · 카메라 좌표계 기준 월드 원점 위치 (= −R C)',mat([[t1],[t2]]))}
-   ${row('<span class="x">x_c</span>, <span class="z">z_c</span>','3D 점 · 카메라 좌표 = R P + t',mat([[xc],[zc]],['x','z']))}
+   ${row(`<span class="p">${math`P`}</span>`,'3D 점 · 월드 좌표',mat([[S1.px],[S1.pz]]))}
+   ${row(`<span class="c">${math`C`}</span>`,`카메라 중심 · 월드 좌표계 기준 카메라 위치 (${math`= -R^{\top}t`})`,mat([[S1.cx],[S1.cz]]))}
+   ${row(`<span class="c">${math`\theta`}</span>`,'회전각 (반시계 +)',S1.th+'°')}
+   ${row(math`R`,'회전 행렬 (행: 카메라 x축, z축)',mat([[c,s],[-s,c]],['x','z']))}
+   ${row(math`t`,`이동 벡터 · 카메라 좌표계 기준 월드 원점 위치 (오른쪽 그림의 빨간 점) (${math`= -R\,C`})`,mat([[t1],[t2]]))}
+   ${row(`<span class="x">${math`x_c`}</span>, <span class="z">${math`z_c`}</span>`,`3D 점 · 카메라 좌표 ${math`= R\,P + t`}`,mat([[xc],[zc]],['x','z']))}
   </table>`;
 }
 
 /* ② K */
 const S2={xc:-1,zc:3,f:500,k:1},W2={xmin:-3.4,xmax:3.4,zmin:-0.7,zmax:6.6},D=1.2;
-['xc','zc','f','k'].forEach(id=>{$(id).value=S2[id];$(id).addEventListener('input',e=>{S2[id]=parseFloat(e.target.value);renderAll()})});
+['xc','zc','f','k'].forEach(id=>{const input=$(id==='k'?'depth-scale':id);input.value=S2[id];input.addEventListener('input',e=>{S2[id]=parseFloat(e.target.value);renderAll()})});
 function render2(){
   ['xc','zc'].forEach(k=>$(k+'o').textContent=f2(S2[k]));$('fo').textContent=S2.f;$('ko').textContent='×'+S2.k.toFixed(2);
   const xc=S2.xc*S2.k,zc=S2.zc*S2.k,ra=xc/zc,u=S2.f*ra+CX,inside=u>=0&&u<=WIDTH,half=CX/S2.f;
@@ -388,20 +811,20 @@ function render2(){
   const {ctx}=setup($('w2'),.93,W2);grid(ctx,W2,tok('--grid'));
   ctx.save();ctx.fillStyle=tok('--fov');ctx.beginPath();ctx.moveTo(...W2.to(0,0));ctx.lineTo(...W2.to(-half*7,7));ctx.lineTo(...W2.to(half*7,7));ctx.closePath();ctx.fill();ctx.restore();
   L(ctx,W2,[0,0],[-half*7,7],mut,1,[4,4]);L(ctx,W2,[0,0],[half*7,7],mut,1,[4,4]);
-  L(ctx,W2,[-half*D,D],[half*D,D],im,4);[0,320,640].forEach(p=>{const x=(p-CX)/S2.f*D;L(ctx,W2,[x,D-.06],[x,D+.06],im,1.5);T(ctx,W2,[x,D],String(p),im,0,-10,false,'center')});
+  L(ctx,W2,[-half*D,D],[half*D,D],im,4);[0,320,640].forEach(p=>{const x=(p-CX)/S2.f*D;L(ctx,W2,[x,D-.06],[x,D+.06],im,1.5);T(ctx,W2,[x,D],String(p),im,0,-16,false,'center',-1,true)});
   T(ctx,W2,[-half*D,D],'이미지 평면',im,-8,16,true,'right');
   [0.5,1,1.5,2].forEach(k=>{if(Math.abs(k-S2.k)>.02)P(ctx,W2,[S2.xc*k,S2.zc*k],pc,4,.25)});
   const far=7/Math.max(zc,.01);L(ctx,W2,[0,0],[xc*far,zc*far],ink,1.1,[2,3]);L(ctx,W2,[0,0],[xc,zc],ink,1.5);
   L(ctx,W2,[0,zc],[xc,zc],tok('--x'),4);L(ctx,W2,[0,0],[0,zc],tok('--z'),4);
-  T(ctx,W2,[xc/2,zc],'x_c '+f2(xc),tok('--x'),0,-8,true,'center');T(ctx,W2,[0,zc/2],'z_c '+f2(zc),tok('--z'),8,0,true);
+  T(ctx,W2,[xc/2,zc],'x_c '+f2(xc),tok('--x'),0,-8,true,'center',2);T(ctx,W2,[0,zc/2],'z_c '+f2(zc),tok('--z'),8,0,true,undefined,2);
   P(ctx,W2,[ra*D,D],im,6);T(ctx,W2,[ra*D,D],inside?'u = '+f1(u):'이미지 밖',im,0,24,true,'center');
-  P(ctx,W2,[xc,zc],pc,7);T(ctx,W2,[xc,zc],'P',pc,9,-6,true);cam(ctx,W2,[0,0],[1,0],[0,1],tok('--cam'),false);T(ctx,W2,[0,-.2],'카메라 중심',tok('--cam'),0,16,true,'center');
+  P(ctx,W2,[xc,zc],pc,7);T(ctx,W2,[xc,zc],'P',pc,9,-6,true,undefined,0);cam(ctx,W2,[0,0],[1,0],[0,1],tok('--cam'),false);T(ctx,W2,[0,-.2],'카메라 중심',tok('--cam'),0,16,true,'center',0);drawLabels(ctx);
   strip($('s2'),[{u,col:pc}]);
   $('def2').innerHTML=`<table class="def">
-   ${row('<span class="x">x_c</span>, <span class="z">z_c</span>','3D 점 · 카메라 좌표 (①의 결과)',mat([[xc],[zc]],['x','z']))}
-   ${row('f','초점거리 (픽셀)',S2.f)}
-   ${row('c_x','주점 (픽셀)',CX)}
-   ${row('<span class="i">u</span>','이미지 좌표 (픽셀) = f · x_c / z_c + c_x',`<span class="i">${inside?f1(u):'이미지 밖'}</span>`)}
+   ${row(`<span class="x">${math`x_c`}</span>, <span class="z">${math`z_c`}</span>`,'3D 점 · 카메라 좌표 (①의 결과)',mat([[xc],[zc]],['x','z']))}
+   ${row(math`f`,'초점거리 (픽셀)',S2.f)}
+   ${row(math`c_x`,'주점 (픽셀)',CX)}
+   ${row(`<span class="i">${math`u`}</span>`,`이미지 좌표 (픽셀) ${math`= f\,\dfrac{x_c}{z_c} + c_x`}`,`<span class="i">${inside?f1(u):'이미지 밖'}</span>`)}
   </table>`;
 }
 
@@ -410,7 +833,7 @@ const S3={b:.8,qx:-1,qz:3,cand:1.5},F3=500,W3={xmin:-3.2,xmax:2,zmin:-.8,zmax:6.
 const ID3={cand:'cand',bl:'b',qx:'qx',qz:'qz'};
 Object.entries(ID3).forEach(([id,k])=>{$(id).value=S3[k];$(id).addEventListener('input',e=>{S3[k]=parseFloat(e.target.value);renderAll()})});
 const uAt=(X,Z,cx0)=>F3*(X-cx0)/Z+CX;
-function ring(ctx,v,p,col,r=9){const q=v.to(...p);ctx.save();ctx.strokeStyle=col;ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(q[0],q[1],r,0,7);ctx.stroke();ctx.restore()}
+function ring(ctx,v,p,col,r=9){const q=v.to(...p);reserveMark(ctx,[q],r+1.25);ctx.save();ctx.strokeStyle=col;ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(q[0],q[1],r,0,7);ctx.stroke();ctx.restore()}
 function render3(){
   const {b,qx,qz,cand}=S3;
   $('cando').textContent=f2(cand)+' m';$('blo').textContent=f2(b)+' m';$('qxo').textContent=f2(qx);$('qzo').textContent=f2(qz);
@@ -421,22 +844,22 @@ function render3(){
   L(ctx,W3,[0,0],[sl*6.6,6.6],c1,1.6);
   [1,2,3,4,5,6].forEach(z=>P(ctx,W3,[sl*z,z],pc,3.5,.3));
   L(ctx,W3,C2,cp,c2,1.2,[4,4]);L(ctx,W3,C2,[qx,qz],c2,2);
-  P(ctx,W3,[qx,qz],pc,7);T(ctx,W3,[qx,qz],'P',pc,10,-6,true);
+  P(ctx,W3,[qx,qz],pc,7);T(ctx,W3,[qx,qz],'P',pc,10,-6,true,undefined,0);
   ring(ctx,W3,cp,pc);T(ctx,W3,cp,match?'일치':'가설',pc,12,14,true);
   cam(ctx,W3,[0,0],[1,0],[0,1],c1,false);cam(ctx,W3,C2,[1,0],[0,1],c2,false);
-  T(ctx,W3,[0,0],'카메라 1',c1,14,4,true);T(ctx,W3,C2,'카메라 2',c2,-14,b>0?4:-14,true,'right');
+  T(ctx,W3,[0,0],'카메라 1',c1,14,4,true,undefined,0);T(ctx,W3,C2,'카메라 2',c2,-14,b>0?4:-14,true,'right',0);
   if(b>0){L(ctx,W3,[-b,-.55],[0,-.55],ink,1.2);T(ctx,W3,[-b/2,-.55],'b = '+f2(b)+' m',ink,0,18,false,'center')}
   else T(ctx,W3,[0,-.55],'b = 0: 두 광선이 겹침',ink,0,18,true,'center');
+  drawLabels(ctx);
   strip($('s3a'),[{u:u1,col:pc},{u:u1,col:pc,ring:true,r:11}]);
   strip($('s3b'),[.75,1.5,2.25,3,3.75,4.5,5.25,6].map(z=>({u:uAt(sl*z,z,-b),col:pc,al:.25,r:5})).concat([{u:u2,col:pc},{u:uc,col:pc,ring:true,r:11}]));
   $('def3').innerHTML=`<table class="def">
-   ${row('b','기준선 (두 카메라 중심 사이 거리)',f2(b)+' m')}
-   ${row('f','초점거리 (픽셀)',F3)}
-   ${row('u_1','카메라 1 이미지 좌표',f1(u1))}
-   ${row('u_2','카메라 2 이미지 좌표',f1(u2))}
-   ${row('d','시차 = u_2 − u_1',f1(d))}
-   ${row('Z','깊이 = f · b / d',ok?f2(Z)+' m':'정의 안 됨 (b = 0)')}
-   ${row('ΔZ','깊이 불확실성 (시차 1 픽셀 오차) ≈ Z² / (f · b)',ok?f2(Z*Z/(F3*b))+' m':'—')}
+   ${row(math`Z`,`깊이 ${math`= \dfrac{f\,b}{d}`}`,ok?f2(Z)+' m':'정의 안 됨 (b = 0)')}
+   ${row(math`b`,'기준선 (두 카메라 중심 사이 거리)',f2(b)+' m')}
+   ${row(math`f`,'초점거리 (픽셀)',F3)}
+   ${row(math`u_1`,'카메라 1 이미지 좌표',f1(u1))}
+   ${row(math`u_2`,'카메라 2 이미지 좌표',f1(u2))}
+   ${row(math`d`,`시차 ${math`= u_2 - u_1`}`,f1(d))}
   </table>`;
 }
 
@@ -462,19 +885,13 @@ const FG=unitF(DP.F),ERR_G=meanErr(FG);
 function epiSeg(l){const W=DP.W,H=DP.H,P=[];
   if(Math.abs(l[1])>1e-12){const y0=-l[2]/l[1],y1=-(l[0]*W+l[2])/l[1];P.push([0,y0],[W,y1])}else{const x=-l[2]/l[0];P.push([x,0],[x,H])}return P}
 function dotI(ctx,x,y,col,r=5,ringOnly){ctx.save();ctx.beginPath();ctx.arc(x,y,r,0,7);if(ringOnly){ctx.strokeStyle=col;ctx.lineWidth=2.5;ctx.stroke()}else{ctx.fillStyle=col;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke()}ctx.restore()}
-$('nfm').value=S4.n;$('nfm').addEventListener('input',e=>{S4.n=parseInt(e.target.value);S4.sel=null;renderAll()});
-$('bad1').addEventListener('change',e=>{S4.bad=e.target.checked;renderAll()});
-$('resample').onclick=()=>{S4.seed++;S4.sel=null;renderAll()};
-$('allLines').onclick=()=>{S4.all=!S4.all;renderAll()};
 const GAP=10;
 $('pair').addEventListener('click',e=>{const r=$('pair').getBoundingClientRect(),k=(r.width-GAP)/2/DP.W,x=(e.clientX-r.left)/k,y=(e.clientY-r.top)/k;if(x>DP.W)return;
   let best=null,bd=1e9;GI.forEach(i=>{const d=Math.hypot(DP.a[i][0]-x,DP.a[i][1]-y);if(d<bd){bd=d;best=i}});S4.sel=best;renderAll()});
 function render4(){
   if(!$('fm')||$('fm').hidden)return;
-  $('allLines').setAttribute('aria-pressed',S4.all?'true':'false');$('allLines').textContent=S4.all?`${S4.n}쌍의 에피폴라 선 숨기기`:`${S4.n}쌍의 에피폴라 선 모두 보기`;
-  $('nfmo').textContent=S4.n+(S4.bad?' (틀린 1개 포함)':'');
-  const idx=sample(),F=eightPoint(idx.map(i=>DP.a[i]),idx.map(i=>DP.b[i])),E=meanErr(F);
-  const inS=new Set(idx);const sel=S4.sel??GI.find((g,n)=>n>=Math.floor(GI.length*0.37)&&!inS.has(g)),sa=DP.a[sel],sb=DP.b[sel],used=inS.has(sel);
+  const idx=sample(),F=eightPoint(idx.map(i=>DP.a[i]),idx.map(i=>DP.b[i]));
+  const inS=new Set(idx);const sel=S4.sel??GI.find((g,n)=>n>=Math.floor(GI.length*0.37)&&!inS.has(g)),sa=DP.a[sel],sb=DP.b[sel];
   const acc=tok('--img'),pc=tok('--p'),bad=tok('--bad');
   // pair canvas
   const {ctx,w,h}=setup($('pair'),(DP.H/DP.W)*0.5+0.004),iw=(w-GAP)/2,k=iw/DP.W,ox=iw+GAP;
@@ -488,12 +905,6 @@ function render4(){
     dotI(ctx,a[0]*k,a[1]*k,col,4.5);dotI(ctx,ox+b[0]*k,b[1]*k,col,4.5);
     if(S4.n<=20){ctx.save();ctx.font=`600 12px ${tok('--sans')}`;ctx.fillStyle='#fff';ctx.strokeStyle='rgba(0,0,0,.6)';ctx.lineWidth=3;[[a[0]*k,a[1]*k],[ox+b[0]*k,b[1]*k]].forEach(q=>{ctx.strokeText(String(n+1),q[0]+6,q[1]-6);ctx.fillText(String(n+1),q[0]+6,q[1]-6)});ctx.restore()}});
   dotI(ctx,sa[0]*k,sa[1]*k,acc,10,true);dotI(ctx,ox+sb[0]*k,sb[1]*k,acc,10,true);
-  $('def4').innerHTML=`<table class="def">
-   ${row('N','8점 알고리즘에 쓴 대응점 수',S4.n+(S4.bad?' (틀린 1)':''))}
-   ${row('x_1 → x_2','선택한 대응점 (픽셀)',`(${sa[0].toFixed(0)}, ${sa[1].toFixed(0)}) → (${sb[0].toFixed(0)}, ${sb[1].toFixed(0)})`)}
-   ${row('',used?'x_2와 추정 에피폴라 선 사이 거리 (F 계산에 쓴 점이라 0에 가까운 것이 당연)':'x_2와 추정 에피폴라 선 사이 거리 (F 계산에 안 쓴 점)',epiDist(F,sa,sb).toFixed(2)+' 픽셀')}  </table>`;
-  const MAX=25,bar=(lab,v,col)=>`<div class="bar"><span>${lab}</span><div class="track"><div class="fillb" style="width:${Math.min(v/MAX,1)*100}%;background:${col}"></div></div><output>${v.toFixed(2)} px</output></div>`;
-  $('bars4').innerHTML=`<p class="note" style="margin:0">평균 에피폴라 거리 (정상 대응점 ${GI.length}쌍, 막대 끝 = ${MAX} 픽셀)</p>`+bar('기준 F (DTU 보정값)',ERR_G,tok('--muted'))+bar('8점 알고리즘 추정 F',E,S4.bad?bad:acc);
 }
 
 /* ⑤-3 RANSAC + F → R | t */
@@ -520,7 +931,6 @@ function refit(t){let I=ALL.filter(i=>t.inl[i]);if(I.length<8)I=t.s;const F=eigh
 const newRun=seed=>({seed,rand:mb32(seed),it:0,cur:null,best:null,fit:null,view:'cur'});
 function stepRun(R){const t=trial(R.rand);t.k=++R.it;R.cur=t;if(!R.best||t.n>R.best.n){R.best=t;R.fit=null}}
 let SR=newRun(3);stepRun(SR);
-const ANG_G=rotAng(CAM.R);
 $('r-one').onclick=()=>{stepRun(SR);SR.view='cur';renderAll()};
 $('r-100').onclick=()=>{for(let i=0;i<100;i++)stepRun(SR);SR.view='best';renderAll()};
 $('r-new').onclick=()=>{SR=newRun(SR.seed+1);stepRun(SR);renderAll()};
@@ -536,48 +946,22 @@ function renderR(){
     :`${t.k}번째 시도 · 뽑은 8쌍 중 틀린 짝 <b style="color:${t.bad?bad:pc}">${t.bad}개</b> → 찬성 ${t.n}쌍`;
   const bar=(lab,v,col)=>`<div class="bar"><span>${lab}</span><div class="track"><div class="fillb" style="width:${v/ALL.length*100}%;background:${col}"></div></div><output>${v} / ${ALL.length}</output></div>`;
   $('r-bars').innerHTML=bar('이번 시도',R.cur.n,R.cur.bad?bad:pc)+bar(`최고 (${R.it}번 중)`,R.best.n,pc)
-    +`<p class="note" style="margin:0">정상 짝은 ${GI.length}쌍이다. 뽑은 8쌍이 모두 정상이면 찬성이 많고, 틀린 짝이 하나라도 섞이면 적다. 8쌍이 모두 정상일 확률은 한 번에 0.869⁸ ≈ 33%다.</p>`;
-  const f=R.fit,p=f.pose;
-  $('r-def').innerHTML=`<table class="def">
-   ${row('F',`최고 시도에 찬성한 ${f.I.length}쌍으로 다시 구한 F · 평균 에피폴라 거리`,`${f.err.toFixed(2)} px (기준 F ${ERR_G.toFixed(2)})`)}
-   ${row('후보',`R, t 후보 4개 · 두 카메라 앞에 온 점 (${p.nUsed}점 중)`,p.cands.map(c=>c.n).join(' · '))}
-   ${row('R','회전각 (DTU 보정값 '+ANG_G.toFixed(1)+'°)',p.ang.toFixed(1)+'°')}
-   ${row('t','이동 방향 · DTU 보정값과의 각도 차이 (길이는 모름)',p.terr.toFixed(1)+'°')}
-  </table>`;
+    +`<p class="note" style="margin:0">8쌍이 모두 정상일 확률 ${math`0.869^8 \approx 33\%`} → 여러 번 뽑으면 한 번은 깨끗한 8쌍이 나온다</p>`;
 }
 
-/* ⑥ SfM · MVS */
-const SM=window.SFM_MVS,MV=SM.mvs,S6={k:5,mode:'ba',pre:0,zi:160};
+/* ⑥ MVS */
+const SM=window.SFM_MVS,MV=SM.mvs,M6={pre:0,zi:160};
 const DIMG=new Image();DIMG.src=SM.depth.png;DIMG.onload=()=>renderAll();
 const TURBO=['rgb(122,4,3)','rgb(239,90,17)','rgb(225,220,55)','rgb(70,247,131)','rgb(62,155,254)','rgb(48,18,59)'];
-$('k6').value=S6.k;$('k6').addEventListener('input',e=>{S6.k=+e.target.value;renderAll()});
-['raw','ba'].forEach(m=>$('m6-'+m).onclick=()=>{S6.mode=m;renderAll()});
-$('z6').max=MV.depths.length-1;$('z6').value=S6.zi;$('z6').addEventListener('input',e=>{S6.zi=+e.target.value;renderAll()});
-[0,1].forEach(i=>$('p6-'+i).onclick=()=>{S6.pre=i;renderAll()});
-function camTri(ctx,p,col,r,bold){const g=Math.atan2(-p[1],-p[0]);ctx.save();ctx.translate(p[0],p[1]);ctx.rotate(g);ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(r,0);ctx.lineTo(-r*.8,r*.75);ctx.lineTo(-r*.8,-r*.75);ctx.closePath();ctx.fill();if(bold){ctx.strokeStyle=tok('--ink');ctx.lineWidth=1.5;ctx.stroke()}ctx.restore()}
+$('z6').max=MV.depths.length-1;$('z6').value=M6.zi;$('z6').addEventListener('input',e=>{M6.zi=+e.target.value;renderAll()});
+[0,1].forEach(i=>$('p6-'+i).onclick=()=>{M6.pre=i;renderAll()});
 function render6(){
   if(!$('sfm')||$('sfm').hidden)return;
-  const s=S6.k-2,st=SM.sfm.steps[S6.mode][s],pv=s>0?SM.sfm.steps[S6.mode][s-1]:null,pc=tok('--p'),xc=tok('--x'),c1=tok('--cam'),c2=tok('--cam2'),mut=tok('--muted'),ink=tok('--ink'),im=tok('--img');
-  $('k6o').textContent=S6.k+'장';['raw','ba'].forEach(m=>$('m6-'+m).setAttribute('aria-pressed',S6.mode===m?'true':'false'));
-  // 1. SfM
-  const V={xmin:-430,xmax:540,zmin:-450,zmax:490};let {ctx}=setup($('sfmv'),.92,V);
-  const prevN=s>0?SM.sfm.npts_sample[s-1]:0,pnp=new Set(SM.sfm.pnp[s]);
-  st.p.forEach((q,i)=>{const isP=pnp.has(i),isN=s>0&&i>=prevN;if(!isP&&!isN)P(ctx,V,q,pc,1.5,.35)});
-  st.p.forEach((q,i)=>{const isP=pnp.has(i),isN=s>0&&i>=prevN;if(isP||isN)P(ctx,V,q,isP?xc:pc,2.3,1)});
-  SM.sfm.truth.slice(0,S6.k).forEach(q=>{const p=V.to(...q);ctx.save();ctx.strokeStyle=mut;ctx.lineWidth=1.3;ctx.beginPath();ctx.arc(p[0],p[1],11,0,7);ctx.stroke();ctx.restore()});
-  st.c.forEach((q,j)=>{const p=V.to(...q),isN=s>0&&j===S6.k-1;camTri(ctx,p,isN?c2:c1,isN?11:8,isN);ctx.save();ctx.font=`600 11.5px ${tok('--sans')}`;ctx.fillStyle=isN?c2:c1;ctx.fillText(String(j+1),p[0]+12,p[1]-8);ctx.restore()});
-  const nNew=s>0?st.n-pv.n:st.n;
-  $('def6').innerHTML=`<table class="def">
-   ${row('사진 수',s>0?`새 사진 = DTU 시점 ${SM.sfm.images[S6.k-1]}`:'첫 두 장 (시점 13, 32) · ⑤처럼 F → E → R, t',S6.k+'장')}
-   ${row('<span class="x">PnP</span>','새 사진에 보이는, 이미 3D 위치를 아는 점 → 새 카메라 R, t',s>0?SM.sfm.pnp_n[s]+'개':'—')}
-   ${row('<span class="p">삼각측량</span>','새로 생긴 점 (③)',nNew+'개')}
-   ${row('','재투영 오차',st.rms.toFixed(2)+' px')}
-   ${row('','카메라 위치 오차 (DTU 보정 위치와의 평균 거리)',st.err.toFixed(1)+' mm')}
-  </table>`;
+  const pc=tok('--p'),mut=tok('--muted'),ink=tok('--ink'),im=tok('--img');
   // 2. MVS: 한 픽셀
-  const pr=MV.presets[S6.pre],zi=S6.zi,z=MV.depths[zi],nc=pr.ncc;let bi=0;nc.forEach((v,i)=>{if(v!=null&&v>(nc[bi]??-9))bi=i});
-  [0,1].forEach(i=>$('p6-'+i).setAttribute('aria-pressed',S6.pre===i?'true':'false'));$('z6o').textContent=z.toFixed(0)+' mm';
-  let w,iw,k,ox;({ctx,w}=setup($('mvsp'),(DP.H/DP.W)*0.5+0.004));iw=(w-GAP)/2;k=iw/DP.W;ox=iw+GAP;
+  const pr=MV.presets[M6.pre],zi=M6.zi,z=MV.depths[zi],nc=pr.ncc;let bi=0;nc.forEach((v,i)=>{if(v!=null&&v>(nc[bi]??-9))bi=i});
+  [0,1].forEach(i=>$('p6-'+i).setAttribute('aria-pressed',M6.pre===i?'true':'false'));$('z6o').textContent=z.toFixed(0)+' mm';
+  let ctx,w,iw,k,ox;({ctx,w}=setup($('mvsp'),(DP.H/DP.W)*0.5+0.004));iw=(w-GAP)/2;k=iw/DP.W;ox=iw+GAP;
   [0,1].forEach(j=>{const I=IMG[j],x0=j?ox:0;if(I.complete&&I.naturalWidth)ctx.drawImage(I,x0,0,iw,DP.H*k)});
   ctx.save();ctx.beginPath();ctx.rect(ox,0,iw,DP.H*k);ctx.clip();ctx.strokeStyle=im;ctx.lineWidth=2.5;ctx.beginPath();pr.x2.forEach((q,i)=>{const X=ox+q[0]*k,Y=q[1]*k;i?ctx.lineTo(X,Y):ctx.moveTo(X,Y)});ctx.stroke();
   const qb=pr.x2[bi];dotI(ctx,ox+qb[0]*k,qb[1]*k,im,5);ctx.restore();
@@ -604,31 +988,642 @@ function render6(){
   $('dnote').textContent=`옆 사진 = 시점 ${D.neighbours.join(', ')}. 깊이 ${D.planes}단계 × 패치 ${D.win}×${D.win} (400×300으로 줄여 계산). DTU 레이저 스캔과 비교한 깊이 오차 중앙값 ${D.err_med} mm, 깊이를 정한 픽셀 ${D.valid_pct}%.`;
 }
 
+/* ⑦ TSDF slice and Marching Squares, using the same measured grid. */
+const TM=window.TSDF_MC,S7={k:1,contour:false};
+const TSLICES=TM.slices.map(s=>Int8Array.from(atob(s),c=>c.charCodeAt(0)));
+$('tsdf-count').addEventListener('input',e=>{S7.k=+e.target.value;renderAll()});
+$('tsdf-contour').onclick=()=>{S7.contour=!S7.contour;renderAll()};
+function marchingSquare(values,x=0,y=0){
+  if(values.some(v=>v===TM.unknown))return [];
+  const corners=[[x,y],[x+1,y],[x+1,y+1],[x,y+1]],crossings=[];
+  for(let e=0;e<4;e++){
+    const next=(e+1)%4,a=values[e],b=values[next];
+    if((a<0)===(b<0))continue;
+    const t=a/(a-b),p=corners[e],q=corners[next];
+    crossings.push([p[0]+t*(q[0]-p[0]),p[1]+t*(q[1]-p[1])]);
+  }
+  if(crossings.length===2)return [[crossings[0],crossings[1]]];
+  if(crossings.length===4){
+    // Bilinear asymptotic decider keeps saddle cells consistent with their corner values.
+    const pairs=values[0]*values[2]-values[1]*values[3]>=0?[[0,1],[2,3]]:[[0,3],[1,2]];
+    return pairs.map(([a,b])=>[crossings[a],crossings[b]]);
+  }
+  return [];
+}
+function sliceCell(data,x,y){const n=TM.size,i=y*n+x;return [data[i],data[i+1],data[i+n+1],data[i+n]]}
+function sliceLines(data,x0=0,y0=0,size=TM.size-1){
+  const lines=[];
+  for(let y=y0;y<y0+size;y++)for(let x=x0;x<x0+size;x++)lines.push(...marchingSquare(sliceCell(data,x,y),x,y));
+  return lines;
+}
+function tsdfColor(value){
+  if(value===TM.unknown)return '#e5e7eb';
+  const c=value<0?[197,65,69]:[51,112,184],t=Math.abs(value)/TM.scale;
+  return `rgb(${c.map(v=>Math.round(255+(v-255)*t)).join(',')})`;
+}
+function render7(){
+  if($('mesh').hidden)return;
+  $('tsdf-count-out').value=S7.k+'장';$('tsdf-contour').setAttribute('aria-pressed',String(S7.contour));
+  const data=TSLICES[S7.k-1],n=TM.size;
+  let {ctx,w,h}=setup($('tsdf-slice'),1),margin=30,side=w-2*margin,cell=side/(n-1);
+  const to=(x,y)=>[margin+x*cell,h-margin-y*cell];
+  ctx.save();ctx.beginPath();ctx.rect(margin,margin,side,side);ctx.clip();
+  for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+    ctx.fillStyle=tsdfColor(data[y*n+x]);const p=to(x,y);ctx.fillRect(p[0]-cell/2,p[1]-cell/2,cell+.3,cell+.3);
+  }
+  ctx.strokeStyle='rgba(23,32,49,.12)';ctx.lineWidth=.4;ctx.beginPath();
+  for(let i=0;i<n-1;i++){const p=margin+(i+.5)*cell;ctx.moveTo(p,margin);ctx.lineTo(p,h-margin);ctx.moveTo(margin,p);ctx.lineTo(w-margin,p)}ctx.stroke();
+  ctx.strokeStyle='#000';ctx.lineWidth=2.5;
+  if(S7.contour){ctx.beginPath();sliceLines(data).forEach(([a,b])=>{ctx.moveTo(...to(...a));ctx.lineTo(...to(...b))});ctx.stroke()}
+  ctx.fillStyle='#000';
+  TM.laser.forEach(p=>{const q=to((p[0]-TM.bounds[0])/(TM.bounds[1]-TM.bounds[0])*(n-1),(p[1]-TM.bounds[0])/(TM.bounds[1]-TM.bounds[0])*(n-1));ctx.beginPath();ctx.arc(...q,1.1,0,7);ctx.fill()});
+  ctx.restore();ctx.strokeStyle=tok('--line');ctx.lineWidth=1;ctx.strokeRect(margin,margin,side,side);
+  TM.camera_directions.slice(0,S7.k).forEach((d,i)=>{
+    const distance=(side/2+20)/Math.max(Math.abs(d[0]),Math.abs(d[1])),dx=d[0],dy=-d[1];
+    const tail=[w/2+dx*distance,h/2+dy*distance],tip=[tail[0]-dx*15,tail[1]-dy*15],angle=Math.atan2(-dy,-dx);
+    ctx.strokeStyle=ctx.fillStyle=tok(i===S7.k-1?'--cam2':'--cam');ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(...tail);ctx.lineTo(...tip);ctx.stroke();ctx.beginPath();ctx.moveTo(...tip);
+    ctx.lineTo(tip[0]-6*Math.cos(angle-.5),tip[1]-6*Math.sin(angle-.5));ctx.lineTo(tip[0]-6*Math.cos(angle+.5),tip[1]-6*Math.sin(angle+.5));ctx.closePath();ctx.fill();
+  });
+  renderCubes7();
+  renderTorus7();
+}
+
+/* Paul Bourke, "Polygonising a scalar field" (1994), triTable:
+   https://paulbourke.net/geometry/polygonise/
+   Copied from PyTorch3D ops/marching_cubes_data.py FACE_TABLE; only the table,
+   with Bourke vertex/edge numbering below, not PyTorch3D EDGE_TO_VERTICES/INDEX. */
+const MC_TRI_TABLE=[
+  [],
+  [0,8,3],
+  [0,1,9],
+  [1,8,3,9,8,1],
+  [1,2,10],
+  [0,8,3,1,2,10],
+  [9,2,10,0,2,9],
+  [2,8,3,2,10,8,10,9,8],
+  [3,11,2],
+  [0,11,2,8,11,0],
+  [1,9,0,2,3,11],
+  [1,11,2,1,9,11,9,8,11],
+  [3,10,1,11,10,3],
+  [0,10,1,0,8,10,8,11,10],
+  [3,9,0,3,11,9,11,10,9],
+  [9,8,10,10,8,11],
+  [4,7,8],
+  [4,3,0,7,3,4],
+  [0,1,9,8,4,7],
+  [4,1,9,4,7,1,7,3,1],
+  [1,2,10,8,4,7],
+  [3,4,7,3,0,4,1,2,10],
+  [9,2,10,9,0,2,8,4,7],
+  [2,10,9,2,9,7,2,7,3,7,9,4],
+  [8,4,7,3,11,2],
+  [11,4,7,11,2,4,2,0,4],
+  [9,0,1,8,4,7,2,3,11],
+  [4,7,11,9,4,11,9,11,2,9,2,1],
+  [3,10,1,3,11,10,7,8,4],
+  [1,11,10,1,4,11,1,0,4,7,11,4],
+  [4,7,8,9,0,11,9,11,10,11,0,3],
+  [4,7,11,4,11,9,9,11,10],
+  [9,5,4],
+  [9,5,4,0,8,3],
+  [0,5,4,1,5,0],
+  [8,5,4,8,3,5,3,1,5],
+  [1,2,10,9,5,4],
+  [3,0,8,1,2,10,4,9,5],
+  [5,2,10,5,4,2,4,0,2],
+  [2,10,5,3,2,5,3,5,4,3,4,8],
+  [9,5,4,2,3,11],
+  [0,11,2,0,8,11,4,9,5],
+  [0,5,4,0,1,5,2,3,11],
+  [2,1,5,2,5,8,2,8,11,4,8,5],
+  [10,3,11,10,1,3,9,5,4],
+  [4,9,5,0,8,1,8,10,1,8,11,10],
+  [5,4,0,5,0,11,5,11,10,11,0,3],
+  [5,4,8,5,8,10,10,8,11],
+  [9,7,8,5,7,9],
+  [9,3,0,9,5,3,5,7,3],
+  [0,7,8,0,1,7,1,5,7],
+  [1,5,3,3,5,7],
+  [9,7,8,9,5,7,10,1,2],
+  [10,1,2,9,5,0,5,3,0,5,7,3],
+  [8,0,2,8,2,5,8,5,7,10,5,2],
+  [2,10,5,2,5,3,3,5,7],
+  [7,9,5,7,8,9,3,11,2],
+  [9,5,7,9,7,2,9,2,0,2,7,11],
+  [2,3,11,0,1,8,1,7,8,1,5,7],
+  [11,2,1,11,1,7,7,1,5],
+  [9,5,8,8,5,7,10,1,3,10,3,11],
+  [5,7,0,5,0,9,7,11,0,1,0,10,11,10,0],
+  [11,10,0,11,0,3,10,5,0,8,0,7,5,7,0],
+  [11,10,5,7,11,5],
+  [10,6,5],
+  [0,8,3,5,10,6],
+  [9,0,1,5,10,6],
+  [1,8,3,1,9,8,5,10,6],
+  [1,6,5,2,6,1],
+  [1,6,5,1,2,6,3,0,8],
+  [9,6,5,9,0,6,0,2,6],
+  [5,9,8,5,8,2,5,2,6,3,2,8],
+  [2,3,11,10,6,5],
+  [11,0,8,11,2,0,10,6,5],
+  [0,1,9,2,3,11,5,10,6],
+  [5,10,6,1,9,2,9,11,2,9,8,11],
+  [6,3,11,6,5,3,5,1,3],
+  [0,8,11,0,11,5,0,5,1,5,11,6],
+  [3,11,6,0,3,6,0,6,5,0,5,9],
+  [6,5,9,6,9,11,11,9,8],
+  [5,10,6,4,7,8],
+  [4,3,0,4,7,3,6,5,10],
+  [1,9,0,5,10,6,8,4,7],
+  [10,6,5,1,9,7,1,7,3,7,9,4],
+  [6,1,2,6,5,1,4,7,8],
+  [1,2,5,5,2,6,3,0,4,3,4,7],
+  [8,4,7,9,0,5,0,6,5,0,2,6],
+  [7,3,9,7,9,4,3,2,9,5,9,6,2,6,9],
+  [3,11,2,7,8,4,10,6,5],
+  [5,10,6,4,7,2,4,2,0,2,7,11],
+  [0,1,9,4,7,8,2,3,11,5,10,6],
+  [9,2,1,9,11,2,9,4,11,7,11,4,5,10,6],
+  [8,4,7,3,11,5,3,5,1,5,11,6],
+  [5,1,11,5,11,6,1,0,11,7,11,4,0,4,11],
+  [0,5,9,0,6,5,0,3,6,11,6,3,8,4,7],
+  [6,5,9,6,9,11,4,7,9,7,11,9],
+  [10,4,9,6,4,10],
+  [4,10,6,4,9,10,0,8,3],
+  [10,0,1,10,6,0,6,4,0],
+  [8,3,1,8,1,6,8,6,4,6,1,10],
+  [1,4,9,1,2,4,2,6,4],
+  [3,0,8,1,2,9,2,4,9,2,6,4],
+  [0,2,4,4,2,6],
+  [8,3,2,8,2,4,4,2,6],
+  [10,4,9,10,6,4,11,2,3],
+  [0,8,2,2,8,11,4,9,10,4,10,6],
+  [3,11,2,0,1,6,0,6,4,6,1,10],
+  [6,4,1,6,1,10,4,8,1,2,1,11,8,11,1],
+  [9,6,4,9,3,6,9,1,3,11,6,3],
+  [8,11,1,8,1,0,11,6,1,9,1,4,6,4,1],
+  [3,11,6,3,6,0,0,6,4],
+  [6,4,8,11,6,8],
+  [7,10,6,7,8,10,8,9,10],
+  [0,7,3,0,10,7,0,9,10,6,7,10],
+  [10,6,7,1,10,7,1,7,8,1,8,0],
+  [10,6,7,10,7,1,1,7,3],
+  [1,2,6,1,6,8,1,8,9,8,6,7],
+  [2,6,9,2,9,1,6,7,9,0,9,3,7,3,9],
+  [7,8,0,7,0,6,6,0,2],
+  [7,3,2,6,7,2],
+  [2,3,11,10,6,8,10,8,9,8,6,7],
+  [2,0,7,2,7,11,0,9,7,6,7,10,9,10,7],
+  [1,8,0,1,7,8,1,10,7,6,7,10,2,3,11],
+  [11,2,1,11,1,7,10,6,1,6,7,1],
+  [8,9,6,8,6,7,9,1,6,11,6,3,1,3,6],
+  [0,9,1,11,6,7],
+  [7,8,0,7,0,6,3,11,0,11,6,0],
+  [7,11,6],
+  [7,6,11],
+  [3,0,8,11,7,6],
+  [0,1,9,11,7,6],
+  [8,1,9,8,3,1,11,7,6],
+  [10,1,2,6,11,7],
+  [1,2,10,3,0,8,6,11,7],
+  [2,9,0,2,10,9,6,11,7],
+  [6,11,7,2,10,3,10,8,3,10,9,8],
+  [7,2,3,6,2,7],
+  [7,0,8,7,6,0,6,2,0],
+  [2,7,6,2,3,7,0,1,9],
+  [1,6,2,1,8,6,1,9,8,8,7,6],
+  [10,7,6,10,1,7,1,3,7],
+  [10,7,6,1,7,10,1,8,7,1,0,8],
+  [0,3,7,0,7,10,0,10,9,6,10,7],
+  [7,6,10,7,10,8,8,10,9],
+  [6,8,4,11,8,6],
+  [3,6,11,3,0,6,0,4,6],
+  [8,6,11,8,4,6,9,0,1],
+  [9,4,6,9,6,3,9,3,1,11,3,6],
+  [6,8,4,6,11,8,2,10,1],
+  [1,2,10,3,0,11,0,6,11,0,4,6],
+  [4,11,8,4,6,11,0,2,9,2,10,9],
+  [10,9,3,10,3,2,9,4,3,11,3,6,4,6,3],
+  [8,2,3,8,4,2,4,6,2],
+  [0,4,2,4,6,2],
+  [1,9,0,2,3,4,2,4,6,4,3,8],
+  [1,9,4,1,4,2,2,4,6],
+  [8,1,3,8,6,1,8,4,6,6,10,1],
+  [10,1,0,10,0,6,6,0,4],
+  [4,6,3,4,3,8,6,10,3,0,3,9,10,9,3],
+  [10,9,4,6,10,4],
+  [4,9,5,7,6,11],
+  [0,8,3,4,9,5,11,7,6],
+  [5,0,1,5,4,0,7,6,11],
+  [11,7,6,8,3,4,3,5,4,3,1,5],
+  [9,5,4,10,1,2,7,6,11],
+  [6,11,7,1,2,10,0,8,3,4,9,5],
+  [7,6,11,5,4,10,4,2,10,4,0,2],
+  [3,4,8,3,5,4,3,2,5,10,5,2,11,7,6],
+  [7,2,3,7,6,2,5,4,9],
+  [9,5,4,0,8,6,0,6,2,6,8,7],
+  [3,6,2,3,7,6,1,5,0,5,4,0],
+  [6,2,8,6,8,7,2,1,8,4,8,5,1,5,8],
+  [9,5,4,10,1,6,1,7,6,1,3,7],
+  [1,6,10,1,7,6,1,0,7,8,7,0,9,5,4],
+  [4,0,10,4,10,5,0,3,10,6,10,7,3,7,10],
+  [7,6,10,7,10,8,5,4,10,4,8,10],
+  [6,9,5,6,11,9,11,8,9],
+  [3,6,11,0,6,3,0,5,6,0,9,5],
+  [0,11,8,0,5,11,0,1,5,5,6,11],
+  [6,11,3,6,3,5,5,3,1],
+  [1,2,10,9,5,11,9,11,8,11,5,6],
+  [0,11,3,0,6,11,0,9,6,5,6,9,1,2,10],
+  [11,8,5,11,5,6,8,0,5,10,5,2,0,2,5],
+  [6,11,3,6,3,5,2,10,3,10,5,3],
+  [5,8,9,5,2,8,5,6,2,3,8,2],
+  [9,5,6,9,6,0,0,6,2],
+  [1,5,8,1,8,0,5,6,8,3,8,2,6,2,8],
+  [1,5,6,2,1,6],
+  [1,3,6,1,6,10,3,8,6,5,6,9,8,9,6],
+  [10,1,0,10,0,6,9,5,0,5,6,0],
+  [0,3,8,5,6,10],
+  [10,5,6],
+  [11,5,10,7,5,11],
+  [11,5,10,11,7,5,8,3,0],
+  [5,11,7,5,10,11,1,9,0],
+  [10,7,5,10,11,7,9,8,1,8,3,1],
+  [11,1,2,11,7,1,7,5,1],
+  [0,8,3,1,2,7,1,7,5,7,2,11],
+  [9,7,5,9,2,7,9,0,2,2,11,7],
+  [7,5,2,7,2,11,5,9,2,3,2,8,9,8,2],
+  [2,5,10,2,3,5,3,7,5],
+  [8,2,0,8,5,2,8,7,5,10,2,5],
+  [9,0,1,5,10,3,5,3,7,3,10,2],
+  [9,8,2,9,2,1,8,7,2,10,2,5,7,5,2],
+  [1,3,5,3,7,5],
+  [0,8,7,0,7,1,1,7,5],
+  [9,0,3,9,3,5,5,3,7],
+  [9,8,7,5,9,7],
+  [5,8,4,5,10,8,10,11,8],
+  [5,0,4,5,11,0,5,10,11,11,3,0],
+  [0,1,9,8,4,10,8,10,11,10,4,5],
+  [10,11,4,10,4,5,11,3,4,9,4,1,3,1,4],
+  [2,5,1,2,8,5,2,11,8,4,5,8],
+  [0,4,11,0,11,3,4,5,11,2,11,1,5,1,11],
+  [0,2,5,0,5,9,2,11,5,4,5,8,11,8,5],
+  [9,4,5,2,11,3],
+  [2,5,10,3,5,2,3,4,5,3,8,4],
+  [5,10,2,5,2,4,4,2,0],
+  [3,10,2,3,5,10,3,8,5,4,5,8,0,1,9],
+  [5,10,2,5,2,4,1,9,2,9,4,2],
+  [8,4,5,8,5,3,3,5,1],
+  [0,4,5,1,0,5],
+  [8,4,5,8,5,3,9,0,5,0,3,5],
+  [9,4,5],
+  [4,11,7,4,9,11,9,10,11],
+  [0,8,3,4,9,7,9,11,7,9,10,11],
+  [1,10,11,1,11,4,1,4,0,7,4,11],
+  [3,1,4,3,4,8,1,10,4,7,4,11,10,11,4],
+  [4,11,7,9,11,4,9,2,11,9,1,2],
+  [9,7,4,9,11,7,9,1,11,2,11,1,0,8,3],
+  [11,7,4,11,4,2,2,4,0],
+  [11,7,4,11,4,2,8,3,4,3,2,4],
+  [2,9,10,2,7,9,2,3,7,7,4,9],
+  [9,10,7,9,7,4,10,2,7,8,7,0,2,0,7],
+  [3,7,10,3,10,2,7,4,10,1,10,0,4,0,10],
+  [1,10,2,8,7,4],
+  [4,9,1,4,1,7,7,1,3],
+  [4,9,1,4,1,7,0,8,1,8,7,1],
+  [4,0,3,7,4,3],
+  [4,8,7],
+  [9,10,8,10,11,8],
+  [3,0,9,3,9,11,11,9,10],
+  [0,1,10,0,10,8,8,10,11],
+  [3,1,10,11,3,10],
+  [1,2,11,1,11,9,9,11,8],
+  [3,0,9,3,9,11,1,2,9,2,11,9],
+  [0,2,11,8,0,11],
+  [3,2,11],
+  [2,3,8,2,8,10,10,8,9],
+  [9,10,2,0,9,2],
+  [2,3,8,2,8,10,0,1,8,1,10,8],
+  [1,10,2],
+  [1,3,8,9,1,8],
+  [0,9,1],
+  [0,3,8],
+  []
+];
+const MC_VERTICES=[[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]];
+const MC_EDGES=[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+const MC_FACES=[[0,1,2,3],[4,5,6,7],[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7]];
+const MC_ROTATIONS=[];
+for(const axes of [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]]){
+  let inversions=0;
+  for(let i=0;i<3;i++)for(let j=i+1;j<3;j++)if(axes[i]>axes[j])inversions++;
+  for(const sx of [-1,1])for(const sy of [-1,1]){
+    const signs=[sx,sy,(inversions%2?-1:1)*sx*sy];
+    MC_ROTATIONS.push(MC_VERTICES.map(p=>MC_VERTICES.findIndex(q=>q.every((v,i)=>v===signs[i]*p[axes[i]]))));
+  }
+}
+const MC_CANONICAL=Array.from({length:256},(_,index)=>Math.min(...MC_ROTATIONS.flatMap(rotation=>{
+  const rotated=rotation.reduce((mask,destination,i)=>mask|((index>>i&1)<<destination),0);
+  return [rotated,rotated^255];
+})));
+const MC_REPRESENTATIVES=[...new Set(MC_CANONICAL)].sort((a,b)=>a-b);
+function polygoniseCube(vertices,values){
+  const caseIndex=values.reduce((mask,v,i)=>mask|(v<0?1<<i:0),0);
+  const crossings=MC_EDGES.map(([a,b])=>{
+    if((values[a]<0)===(values[b]<0))return null;
+    const t=values[a]/(values[a]-values[b]);
+    return vertices[a].map((v,i)=>v+t*(vertices[b][i]-v));
+  });
+  const triangles=[],row=MC_TRI_TABLE[caseIndex];
+  for(let i=0;i<row.length;i+=3)triangles.push(row.slice(i,i+3).map(edge=>crossings[edge]));
+  return {caseIndex,crossings,triangles};
+}
+function ambiguousFaces7(values){return MC_FACES.filter(face=>face.every((v,i)=>(values[v]<0)!==(values[face[(i+1)%4]]<0)))}
+const MC_PALETTE=[[176,202,150],[194,164,205],[230,199,122],[155,193,179],[209,180,147],[186,184,210]];
+const MC_GRID=[];
+// Analytic sphere example, not DTU: 4×4×4 samples at −3, −1, 1, 3; c = (−.5, −.5, −.5), R = 3.
+for(let k=0;k<3;k++)for(let j=0;j<3;j++)for(let i=0;i<3;i++){
+  const center=[2*i-2,2*j-2,2*k-2],vertices=MC_VERTICES.map(p=>p.map((v,d)=>v+center[d]));
+  const values=vertices.map(p=>Math.hypot(...p.map(v=>v+.5))-3);
+  MC_GRID.push({center,vertices,values,color:MC_PALETTE[(i+2*j+4*k)%6],...polygoniseCube(vertices,values)});
+}
+let MC_CASE=1;
+const MC_VIEWS=[{id:'mc-single',yaw:.6,pitch:.45,radius:Math.sqrt(3),selected:0},{id:'mc-grid',yaw:.6,pitch:.45,radius:4.2*Math.sqrt(3)}];
+MC_REPRESENTATIVES.forEach((index,i)=>{
+  const button=document.createElement('button');button.type='button';button.textContent=i+1;
+  button.setAttribute('aria-label',`기본형 ${i+1}`);
+  button.onclick=()=>{MC_CASE=index;renderCubes7()};$('mc-presets').append(button);
+});
+$('mc-spread').addEventListener('input',renderCubes7);
+function cubeRotation7(view){
+  const cy=Math.cos(view.yaw),sy=Math.sin(view.yaw),cp=Math.cos(view.pitch),sp=Math.sin(view.pitch);
+  const [x,y,z,w]=view.quaternion||[0,0,0,1];
+  const turn=[[1-2*(y*y+z*z),2*(x*y-z*w),2*(x*z+y*w)],[2*(x*y+z*w),1-2*(x*x+z*z),2*(y*z-x*w)],[2*(x*z-y*w),2*(y*z+x*w),1-2*(x*x+y*y)]];
+  const initial=[[cy,-sy,0],[-sp*sy,-sp*cy,cp],[cp*sy,cp*cy,sp]];
+  const matrix=turn.map(row=>[0,1,2].map(i=>row.reduce((sum,v,j)=>sum+v*initial[j][i],0)));
+  return p=>matrix.map(row=>row.reduce((sum,v,i)=>sum+v*p[i],0));
+}
+function cubeProject7(p,w,h,scale){return [w/2+p[0]*scale,h/2-p[1]*scale,p[2]]}
+function cubeScale7(view,w,h){
+  if(view.fitWidth!==w||view.fitHeight!==h){
+    view.fitWidth=w;view.fitHeight=h;view.fitScale=Math.min(w,h)*.45/view.radius;
+  }
+  return view.fitScale*view.zoom;
+}
+function cubeHits7(view,w,h){
+  const rotate=cubeRotation7(view),scale=cubeScale7(view,w,h);
+  return MC_VERTICES.map((p,i)=>({p:cubeProject7(rotate(p),w,h,scale),i})).sort((a,b)=>a.p[2]-b.p[2]);
+}
+function turnCube7(view,[a,b,c,d]){
+  const [x,y,z,w]=view.quaternion;
+  const q=[d*x+a*w+b*z-c*y,d*y-a*z+b*w+c*x,d*z+a*y-b*x+c*w,d*w-a*x-b*y-c*z];
+  const length=Math.hypot(...q);view.quaternion=q.map(v=>v/length);
+}
+function cubeBall7(x,y,w,h){
+  const radius=Math.min(w,h)/2,a=(x-w/2)/radius,b=(h/2-y)/radius,length=Math.hypot(a,b);
+  return length>1?[a/length,b/length,0]:[a,b,Math.sqrt(1-length*length)];
+}
+function cubeArc7(a,b){
+  const w=1+a.reduce((sum,v,i)=>sum+v*b[i],0);
+  const q=w<1e-10?(Math.abs(a[0])<.9?[0,a[2],-a[1],0]:[-a[2],0,a[0],0]):[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0],w];
+  const length=Math.hypot(...q);return q.map(v=>v/length);
+}
+const CUBE_DRAWS7=new Set();let CUBE_FRAME7=null;
+function queueCubeDraw7(draw){
+  CUBE_DRAWS7.add(draw);
+  if(CUBE_FRAME7===null)CUBE_FRAME7=requestAnimationFrame(()=>{
+    CUBE_FRAME7=null;const pending=[...CUBE_DRAWS7];CUBE_DRAWS7.clear();pending.forEach(draw=>draw());
+  });
+}
+function cubeShade7(p,color){
+  const a=p[1].map((v,i)=>v-p[0][i]),b=p[2].map((v,i)=>v-p[0][i]);
+  const normal=[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+  const light=.38+.62*Math.abs(normal[2])/Math.hypot(...normal);
+  return `rgb(${color.map(v=>Math.round(v*light)).join(',')})`;
+}
+function paintCubeFaces7(ctx,faces){
+  faces.sort((a,b)=>a.points.reduce((sum,p)=>sum+p[2],0)/a.points.length-b.points.reduce((sum,p)=>sum+p[2],0)/b.points.length);
+  faces.forEach(face=>{
+    ctx.beginPath();face.points.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();
+    ctx.fillStyle=face.color;ctx.fill();ctx.strokeStyle='rgba(0,0,0,.16)';ctx.lineWidth=.7;ctx.stroke();
+  });
+}
+function drawCubes7(view,cells,spread,single){
+  const cv=$(view.id),{ctx,w,h}=setup(cv,.72),scale=cubeScale7(view,w,h);
+  const rotate=cubeRotation7(view),project=p=>cubeProject7(p,w,h,scale),faces=[],dots=[];
+  cells.forEach(cell=>{
+    const transform=p=>rotate(p.map((v,i)=>v+spread*cell.center[i])),vertices=cell.vertices.map(p=>project(transform(p)));
+    ctx.strokeStyle=tok('--line');ctx.lineWidth=1;
+    MC_EDGES.forEach(([a,b])=>{ctx.beginPath();ctx.moveTo(...vertices[a].slice(0,2));ctx.lineTo(...vertices[b].slice(0,2));ctx.stroke()});
+    cell.triangles.forEach(triangle=>{
+      const p=triangle.map(transform);faces.push({points:p.map(project),color:cubeShade7(p,cell.color)});
+    });
+    if(single)ambiguousFaces7(cell.values).forEach(face=>faces.push({points:face.map(i=>vertices[i]),color:'rgba(250,210,65,.25)'}));
+    cell.crossings.filter(Boolean).forEach(p=>dots.push(project(transform(p))));
+  });
+  paintCubeFaces7(ctx,faces);
+  ctx.fillStyle='#000';
+  dots.sort((a,b)=>a[2]-b[2]).forEach(p=>{ctx.beginPath();ctx.arc(p[0],p[1],single?3.8:2.6,0,7);ctx.fill()});
+  if(single){
+    view.hits=cubeHits7(view,w,h);
+    ctx.font=`600 13px ${tok('--sans')}`;ctx.textAlign='center';ctx.textBaseline='middle';
+    view.hits.forEach(({p,i})=>{
+      const negative=!!(MC_CASE>>i&1);ctx.fillStyle=tsdfColor(negative?-TM.scale:TM.scale);
+      ctx.beginPath();ctx.arc(p[0],p[1],9,0,7);ctx.fill();ctx.fillStyle='#fff';ctx.fillText(negative?'−':'+',p[0],p[1]);
+      if(document.activeElement===cv&&i===view.selected){ctx.strokeStyle=tok('--ink');ctx.lineWidth=2;ctx.beginPath();ctx.arc(p[0],p[1],13,0,7);ctx.stroke()}
+    });
+    cv.setAttribute('aria-label',`칸 하나. 방향키로 꼭짓점 선택, Enter 또는 공백으로 부호 바꾸기. 끌어서 돌리고 휠 또는 더하기·빼기 키로 확대·축소. 선택한 꼭짓점 ${view.selected+1}: ${MC_CASE>>view.selected&1?'−':'+'}`);
+  }
+}
+function renderCubes7(){
+  if($('mesh').hidden)return;
+  const values=MC_VERTICES.map((_,i)=>MC_CASE>>i&1?-1:1),single={vertices:MC_VERTICES,values,center:[0,0,0],color:[182,186,191],...polygoniseCube(MC_VERTICES,values)};
+  const basic=MC_REPRESENTATIVES.indexOf(MC_CANONICAL[MC_CASE])+1;
+  Array.from($('mc-presets').children).forEach((button,i)=>button.setAttribute('aria-pressed',String(i+1===basic)));
+  $('mc-case-note').textContent=`256가지 중 경우 ${MC_CASE} → 기본형 ${basic} (돌리거나 + / −를 뒤집으면 같은 모양)${ambiguousFaces7(values).length?' · 애매한 면 있음':''}`;
+  $('mc-spread-out').value=$('mc-spread').value+'%';
+  drawCubes7(MC_VIEWS[0],[single],0,true);drawCubes7(MC_VIEWS[1],MC_GRID,+$('mc-spread').value/100,false);
+}
+function bindCubeView7(view,draw,click,select){
+  const cv=$(view.id);
+  view.quaternion=[0,0,0,1];view.zoom=1;
+  const redraw=()=>queueCubeDraw7(draw);
+  const reset=()=>{view.quaternion=[0,0,0,1];view.zoom=1;view.drag=null;redraw()};
+  const zoom=factor=>{view.zoom=Math.max(.5,Math.min(4,view.zoom*factor));redraw()};
+  const ball=e=>{const rect=cv.getBoundingClientRect();return cubeBall7(e.clientX-rect.left,e.clientY-rect.top,rect.width,rect.height)};
+  $(view.id+'-reset').onclick=reset;cv.addEventListener('dblclick',e=>{e.preventDefault();reset()});
+  cv.addEventListener('wheel',e=>{
+    e.preventDefault();e.stopPropagation();
+    const unit=e.deltaMode===1?16:e.deltaMode===2?cv.clientHeight:1;zoom(Math.exp(-e.deltaY*unit*.0015));
+  },{passive:false});
+  cv.addEventListener('pointerdown',e=>{
+    if(e.button!==0||view.drag)return;
+    e.preventDefault();cv.focus({preventScroll:true});try{cv.setPointerCapture(e.pointerId)}catch{}
+    view.drag={id:e.pointerId,x:e.clientX,y:e.clientY,ball:ball(e),moved:false};
+  });
+  cv.addEventListener('pointermove',e=>{
+    const drag=view.drag;if(!drag||e.pointerId!==drag.id)return;
+    const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.hypot(dx,dy)>=4)drag.moved=true;
+    if(drag.moved){const next=ball(e);turnCube7(view,cubeArc7(drag.ball,next));drag.ball=next;redraw()}
+  });
+  cv.addEventListener('pointerup',e=>{
+    const drag=view.drag;if(!drag||e.pointerId!==drag.id)return;
+    if(click&&!drag.moved&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<4)click(e);
+    view.drag=null;try{cv.releasePointerCapture(e.pointerId)}catch{}
+  });
+  ['pointercancel','lostpointercapture'].forEach(type=>cv.addEventListener(type,()=>{view.drag=null}));
+  cv.addEventListener('keydown',e=>{
+    if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','=','-',...(select?['Enter',' ']:[])].includes(e.key))return;
+    e.preventDefault();e.stopPropagation();
+    if(e.key==='+'||e.key==='=')zoom(1.15);else if(e.key==='-')zoom(1/1.15);
+    else if(select)select(e);else turnCube7(view,[e.key==='ArrowDown'?Math.sin(.06):e.key==='ArrowUp'?-Math.sin(.06):0,e.key==='ArrowRight'?Math.sin(.06):e.key==='ArrowLeft'?-Math.sin(.06):0,0,Math.cos(.06)]);
+    redraw();
+  });
+  ['focus','blur'].forEach(type=>cv.addEventListener(type,redraw));
+}
+MC_VIEWS.forEach((view,index)=>bindCubeView7(view,renderCubes7,index===0?e=>{
+  const cv=$(view.id),rect=cv.getBoundingClientRect(),w=cv.clientWidth||300,h=Math.round(w*.72),x=e.clientX-rect.left,y=e.clientY-rect.top;
+  const hit=cubeHits7(view,w,h).filter(hit=>Math.hypot(hit.p[0]-x,hit.p[1]-y)<=14).sort((a,b)=>Math.hypot(a.p[0]-x,a.p[1]-y)-Math.hypot(b.p[0]-x,b.p[1]-y)||b.p[2]-a.p[2])[0];
+  if(hit){view.selected=hit.i;MC_CASE^=1<<hit.i;renderCubes7()}
+}:null,index===0?e=>{
+  if(e.key==='Enter'||e.key===' ')MC_CASE^=1<<view.selected;
+  else view.selected=(view.selected+({'ArrowLeft':7,'ArrowRight':1,'ArrowUp':4,'ArrowDown':4}[e.key]))%8;
+}:null));
+
+/* Analytic torus and simulated orthographic depth maps; not DTU data. */
+const TORUS_SIZE7=18,TORUS_STEP7=2/(TORUS_SIZE7-1),TORUS_TAU7=2.5*TORUS_STEP7;
+const TORUS_VERTICES7=[];
+for(let z=0;z<TORUS_SIZE7;z++)for(let y=0;y<TORUS_SIZE7;y++)for(let x=0;x<TORUS_SIZE7;x++)TORUS_VERTICES7.push([x,y,z].map(v=>-1+v*TORUS_STEP7));
+function torusDistance7([x,y,z]){
+  const c=Math.sqrt(3)/2,s=.5;
+  return Math.hypot(Math.hypot(x,c*y+s*z)-.5,-s*y+c*z)-.22;
+}
+const TORUS_CAMERAS7=[0,180,90,270,45,225,135,315].map((degrees,index)=>{
+  // The lower ring observes the underside hidden from the upper ring.
+  const angle=degrees*Math.PI/180,elevation=(index<4?25:-25)*Math.PI/180,c=Math.cos(angle),s=Math.sin(angle),ce=Math.cos(elevation),se=Math.sin(elevation);
+  return {position:[2.2*ce*c,2.2*ce*s,2.2*se],direction:[-ce*c,-ce*s,-se],right:[-s,c,0],up:[-se*c,-se*s,ce]};
+});
+const TORUS_DEPTHS7=[],TORUS_CACHE7=new Map();
+function torusDepth7(index){
+  if(TORUS_DEPTHS7[index])return TORUS_DEPTHS7[index];
+  // Cover every projected grid corner; missed rays observe empty space to the far background.
+  const camera=TORUS_CAMERAS7[index],size=96,span=3.6,depths=new Float64Array(size*size).fill(4.4),hits=[];
+  let seed=(0x51df2301+index*7919)>>>0;
+  const random=()=>{seed=(1664525*seed+1013904223)>>>0;return (seed+.5)/4294967296};
+  for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+    const u=((x+.5)/size-.5)*span,v=((y+.5)/size-.5)*span;
+    const origin=camera.position.map((p,d)=>p+u*camera.right[d]+v*camera.up[d]);
+    let depth=0;
+    for(let step=0;step<128&&depth<4.4;step++){
+      const p=origin.map((v,d)=>v+depth*camera.direction[d]),distance=torusDistance7(p);
+      if(distance<1e-5){
+        const noise=Math.sqrt(-2*Math.log(random()))*Math.cos(2*Math.PI*random())*.3*TORUS_STEP7;
+        depths[y*size+x]=depth+noise;
+        hits.push(p);
+        break;
+      }
+      depth+=distance;
+    }
+  }
+  const rays=Array.from({length:Math.min(5,hits.length)},(_,i)=>hits[Math.floor((i+.5)*hits.length/Math.min(5,hits.length))]);
+  return TORUS_DEPTHS7[index]={size,span,depths,hits:rays};
+}
+function torusReconstruct7(count){
+  if(TORUS_CACHE7.has(count))return TORUS_CACHE7.get(count);
+  const sums=new Float64Array(TORUS_VERTICES7.length),weights=new Uint8Array(sums.length);
+  for(let index=0;index<count;index++){
+    const camera=TORUS_CAMERAS7[index],map=torusDepth7(index);
+    TORUS_VERTICES7.forEach((p,vertex)=>{
+      const q=p.map((v,d)=>v-camera.position[d]);
+      const u=q.reduce((s,v,d)=>s+v*camera.right[d],0),v=q.reduce((s,v,d)=>s+v*camera.up[d],0);
+      const x=Math.floor((u/map.span+.5)*map.size),y=Math.floor((v/map.span+.5)*map.size);
+      if(x<0||x>=map.size||y<0||y>=map.size)return;
+      const depth=map.depths[y*map.size+x];if(!Number.isFinite(depth))return;
+      const z=q.reduce((sum,v,d)=>sum+v*camera.direction[d],0),distance=depth-z;
+      if(distance>-TORUS_TAU7){sums[vertex]+=Math.min(1,distance/TORUS_TAU7);weights[vertex]++}
+    });
+  }
+  const values=Array.from(sums,(sum,i)=>weights[i]?sum/weights[i]:null),triangles=[],crossings=new Map();
+  const n=TORUS_SIZE7;
+  for(let z=0;z<n-1;z++)for(let y=0;y<n-1;y++)for(let x=0;x<n-1;x++){
+    const indices=MC_VERTICES.map(([i,j,k])=>(x+(i+1)/2)+n*(y+(j+1)/2)+n*n*(z+(k+1)/2));
+    const cellValues=indices.map(i=>values[i]);if(cellValues.some(v=>v===null))continue;
+    const mesh=polygoniseCube(indices.map(i=>TORUS_VERTICES7[i]),cellValues);
+    triangles.push(...mesh.triangles);
+    mesh.crossings.forEach((point,edge)=>{if(point)crossings.set(MC_EDGES[edge].map(i=>indices[i]).sort((a,b)=>a-b).join(','),point)});
+  }
+  const result={values,weights,triangles,crossings:[...crossings.values()]};TORUS_CACHE7.set(count,result);return result;
+}
+
+const TORUS_VIEW7={id:'tsdf-volume',yaw:112.5*Math.PI/180,pitch:64.5*Math.PI/180,radius:2};
+const TORUS_STATE7={stage:0,count:1,layer:0,mesh:torusReconstruct7(1)};
+const TORUS_NOTES7=['공간을 작은 칸으로 나누고 꼭짓점에 값을 적을 준비를 한다.','깊이 지도에서 표면 앞뒤 거리를 꼭짓점에 적는다.','같은 꼭짓점에 모인 거리를 평균해 빈 곳을 채우고 잡음을 줄인다.','이웃 꼭짓점의 부호가 바뀌는 변에 값이 영인 자리를 찍는다.','변 위의 점을 삼각형으로 이어 면을 만든다.'];
+Array.from($('tsdf-volume-stages').children).forEach((button,stage)=>button.onclick=()=>{
+  TORUS_STATE7.stage=stage;
+  if(stage<2){TORUS_STATE7.count=1;$('tsdf-volume-count').value='1';TORUS_STATE7.mesh=torusReconstruct7(1)}
+  renderTorus7();
+});
+$('tsdf-volume-count').addEventListener('input',e=>{
+  TORUS_STATE7.count=+e.target.value;TORUS_STATE7.mesh=torusReconstruct7(TORUS_STATE7.count);renderTorus7();
+});
+$('tsdf-volume-layer').addEventListener('input',e=>{TORUS_STATE7.layer=+e.target.value;renderTorus7()});
+function renderTorus7(){
+  if($('mesh').hidden)return;
+  const {stage,count,layer,mesh}=TORUS_STATE7,cv=$(TORUS_VIEW7.id),{ctx,w,h}=setup(cv,520/(cv.clientWidth||300));
+  const rotate=cubeRotation7(TORUS_VIEW7),scale=cubeScale7(TORUS_VIEW7,w,h);
+  const project=p=>cubeProject7(p,w,h,scale),to=p=>project(rotate(p));
+  function line(a,b,color,alpha=1){
+    ctx.globalAlpha=alpha;ctx.strokeStyle=color;ctx.lineWidth=1;const p=to(a),q=to(b);
+    ctx.beginPath();ctx.moveTo(p[0],p[1]);ctx.lineTo(q[0],q[1]);ctx.stroke();
+  }
+  MC_EDGES.forEach(([a,b])=>line(MC_VERTICES[a],MC_VERTICES[b],tok('--line')));
+  if(stage===4)paintCubeFaces7(ctx,mesh.triangles.map(triangle=>{
+    const p=triangle.map(rotate);return {points:p.map(project),color:cubeShade7(p,[182,186,191])};
+  }));
+  const dots=[];
+  TORUS_VERTICES7.forEach((p,i)=>{
+    if(layer&&Math.floor(i/(TORUS_SIZE7*TORUS_SIZE7))!==layer-1)return;
+    const value=stage?mesh.values[i]:null,near=value!==null&&Math.abs(value)<1;
+    const radius=stage?(layer||near?2.8:value===null?1.5:2.5):1.35;
+    const alpha=stage?(layer?.9:(near?.9:value===null?.2:.07)*(stage>=3?.25:1)):.3;
+    dots.push({p:to(p),radius,alpha,color:stage?tsdfColor(value===null?TM.unknown:value*TM.scale):tok('--muted')});
+  });
+  dots.sort((a,b)=>a.p[2]-b.p[2]).forEach(({p,radius,alpha,color})=>{
+    ctx.globalAlpha=alpha;ctx.fillStyle=color;ctx.beginPath();ctx.arc(p[0],p[1],radius,0,7);ctx.fill();
+  });
+  if(stage>=3){
+    ctx.globalAlpha=stage===4?.55:1;ctx.fillStyle='#000';
+    mesh.crossings.map(to).sort((a,b)=>a[2]-b[2]).forEach(p=>{ctx.beginPath();ctx.arc(p[0],p[1],stage===4?1.4:2.3,0,7);ctx.fill()});
+  }
+  if(stage){
+    TORUS_CAMERAS7.slice(0,count).forEach((camera,index)=>{
+      const color=tok(index===count-1?'--cam2':'--cam'),alpha=stage>=3?.22:.7;
+      const position=camera.position.map(v=>v*1.2/Math.max(...camera.position.map(Math.abs)));
+      const base=[[-1,-1],[1,-1],[1,1],[-1,1]].map(([x,y])=>position.map((v,d)=>v+.14*camera.direction[d]+.05*(x*camera.right[d]+y*camera.up[d])));
+      base.forEach((p,i)=>{line(position,p,color,alpha);line(p,base[(i+1)%4],color,alpha)});
+      if(index===count-1)TORUS_DEPTHS7[index].hits.forEach(p=>{
+        // Clip parallel rays just outside the grid so their origins stay in view.
+        const depth=Math.min(...p.map((v,d)=>camera.direction[d]?(v+Math.sign(camera.direction[d])*1.12)/camera.direction[d]:Infinity));
+        line(p.map((v,d)=>v-depth*camera.direction[d]),p,color,stage>=3?.07:.25);
+      });
+    });
+  }
+  ctx.globalAlpha=1;
+  Array.from($('tsdf-volume-stages').children).forEach((button,i)=>button.setAttribute('aria-pressed',String(i===stage)));
+  $('tsdf-volume-note').textContent=TORUS_NOTES7[stage];$('tsdf-volume-count').disabled=stage<2;
+  $('tsdf-volume-count-out').value=count+'장';$('tsdf-volume-layer-out').value=layer?layer+'층':'전체';
+}
+bindCubeView7(TORUS_VIEW7,renderTorus7);
+
 /* ④ feature detection + matching */
-const FT=window.FEAT,S5={sel:null,top:true,mode:'acc',k:0};let HG=null;
-function harrisPrep(){if(HG||!(IMG[0].complete&&IMG[0].naturalWidth))return;
-  const w=800,h=600,c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.drawImage(IMG[0],0,0,w,h);
-  let px;try{px=x.getImageData(0,0,w,h).data}catch(e){HG={err:true};return}
-  const g=new Float32Array(w*h);for(let i=0;i<w*h;i++)g[i]=0.299*px[4*i]+0.587*px[4*i+1]+0.114*px[4*i+2];
-  const Ix=new Float32Array(w*h),Iy=new Float32Array(w*h);
-  for(let y=1;y<h-1;y++)for(let q=1;q<w-1;q++){const i=y*w+q;
-    Ix[i]=((g[i-w+1]+2*g[i+1]+g[i+w+1])-(g[i-w-1]+2*g[i-1]+g[i+w-1]))/8;Iy[i]=((g[i+w-1]+2*g[i+w]+g[i+w+1])-(g[i-w-1]+2*g[i-w]+g[i-w+1]))/8}
-  const W1=w+1,integ=f=>{const I=new Float64Array(W1*(h+1));for(let y=0;y<h;y++){let r=0;for(let q=0;q<w;q++){r+=f(y*w+q);I[(y+1)*W1+q+1]=I[y*W1+q+1]+r}}return I};
-  const Jxx=integ(i=>Ix[i]*Ix[i]),Jyy=integ(i=>Iy[i]*Iy[i]),Jxy=integ(i=>Ix[i]*Iy[i]),H=7;
-  const box=(J,q,y)=>J[(y+H+1)*W1+q+H+1]-J[(y-H)*W1+q+H+1]-J[(y+H+1)*W1+q-H]+J[(y-H)*W1+q-H];
-  const l1=new Float32Array(w*h),l2=new Float32Array(w*h),R=new Float32Array(w*h);
-  for(let y=H+1;y<h-H-1;y++)for(let q=H+1;q<w-H-1;q++){const a=box(Jxx,q,y),b=box(Jyy,q,y),cxy=box(Jxy,q,y),tr=a+b,det=a*b-cxy*cxy,dd=Math.sqrt(Math.max(tr*tr/4-det,0)),i=y*w+q;l1[i]=tr/2+dd;l2[i]=tr/2-dd;R[i]=det-0.05*tr*tr}
-  const smp=[];for(let y=20;y<h-20;y+=3)for(let q=20;q<w-20;q+=3)smp.push(l1[y*w+q]);smp.sort((p,q)=>p-q);const T=smp[Math.floor(smp.length*.95)];
-  const cand=[];for(let y=20;y<h-20;y++)for(let q=20;q<w-20;q++){const i=y*w+q,v=R[i];if(v<=0)continue;let mx=true;for(let dy=-2;dy<=2&&mx;dy++)for(let dx=-2;dx<=2;dx++)if(R[i+dy*w+dx]>v){mx=false;break}if(mx)cand.push([v,q,y])}
-  cand.sort((p,q)=>q[0]-p[0]);const top=[];for(const cc of cand){if(top.length>=200)break;if(top.every(t=>Math.hypot(t[0]-cc[1],t[1]-cc[2])>12))top.push([cc[1],cc[2]])}
-  HG={w,h,g,l1,l2,R,T,top}}
-const kindOf=(a,b,T)=>a<0.05*T?'평면':b<0.05*a?'엣지':b>0.1*T?'코너':'약한 코너';
+const FT=window.FEAT,S5={mode:'acc',k:0};
 const EXL=()=>S5.mode==='acc'?[0,FT.nex_acc]:[FT.nex_acc,FT.ex.length];
 (function(){const [a,b]=EXL();for(let i=a;i<b;i++){const e=FT.ex[i],r=e[6]/e[7];if(e[8]&&r>.5&&r<.6){S5.k=i-a;break}}})();
 $('m-acc').onclick=()=>{S5.mode='acc';S5.k=0;renderAll()};$('m-rej').onclick=()=>{S5.mode='rej';S5.k=0;renderAll()};
 $('m-next').onclick=()=>{const [a,b]=EXL();S5.k=(S5.k+1)%(b-a);renderAll()};
 function renderFeat(){
-  if(!$('feat')||$('feat').hidden)return;harrisPrep();
+  if(!$('feat')||$('feat').hidden)return;
   const acc=tok('--img'),pc=tok('--p'),bad=tok('--bad'),mut=tok('--muted'),ink=tok('--ink');
   const CASES=[['flat','--flat'],['edge','--x'],['corner','--p']];
   let {ctx,w,h}=setup($('qimg'),DP.H/DP.W);let k=w/DP.W;
@@ -636,18 +1631,10 @@ function renderFeat(){
   const NAME={flat:'평면',edge:'엣지',corner:'코너'};
   CASES.forEach(([n,c])=>{const q=FT.presets[n],col=tok(c);ctx.save();ctx.strokeStyle=col;ctx.lineWidth=3.5;ctx.strokeRect(q[0]*k-15*k,q[1]*k-15*k,30*k,30*k);
     ctx.font=`700 14px ${tok('--sans')}`;ctx.fillStyle=col;ctx.strokeStyle='rgba(0,0,0,.7)';ctx.lineWidth=3.5;const tx=q[0]*k+15*k+6,ty=q[1]*k+5;ctx.strokeText(NAME[n],tx,ty);ctx.fillText(NAME[n],tx,ty);ctx.restore()});
-  const N=6,E0=225*15*15;
-  CASES.forEach(([n,c])=>{const q=FT.presets[n],col=tok(c),cv=setup($('qc-'+n),.5),sd=(cv.w-GAP)/2,cx2=cv.ctx;
+  CASES.forEach(([n,c])=>{const q=FT.presets[n],col=tok(c),cv=setup($('qc-'+n),1),sd=cv.w,cx2=cv.ctx;
     const Z=30;cx2.imageSmoothingEnabled=false;if(IMG[0].complete&&IMG[0].naturalWidth)cx2.drawImage(IMG[0],q[0]-Z,q[1]-Z,2*Z+1,2*Z+1,0,0,sd,sd);
     const sc=sd/(2*Z+1);cx2.strokeStyle=col;cx2.lineWidth=3;cx2.strokeRect((Z-15)*sc,(Z-15)*sc,30*sc,30*sc);
-    if(HG&&!HG.err){const G=HG.g,Wd=HG.w,hx=Math.round(q[0]/2),hy=Math.round(q[1]/2),cell=sd/(2*N+1);
-      for(let v=-N;v<=N;v++)for(let u=-N;u<=N;u++){let sm=0;for(let dy=-7;dy<=7;dy++)for(let dx=-7;dx<=7;dx++){const i=(hy+dy)*Wd+hx+dx,dd=G[i+v*Wd+u]-G[i];sm+=dd*dd}
-        const t=sm/(sm+E0);cx2.fillStyle=`hsl(272,62%,${94-64*t}%)`;cx2.fillRect(sd+GAP+(u+N)*cell,(v+N)*cell,cell+.5,cell+.5)}
-      cx2.strokeStyle=tok('--ink');cx2.lineWidth=1.5;cx2.strokeRect(sd+GAP+N*cell,N*cell,cell,cell);
-      const i=hy*Wd+hx,a=HG.l1[i],b=HG.l2[i],T=HG.T;
-      $('qr-'+n).innerHTML=`λ_1 = ${(a/T).toFixed(2)} T, λ_2 = ${(b/T).toFixed(3)} T → 판정 <b style="color:${col}">${kindOf(a,b,T)}</b>`}
-    else $('qr-'+n).textContent=HG&&HG.err?'이 환경에서는 이미지 픽셀을 읽을 수 없음 (링크로 열면 동작)':'이미지 불러오는 중';
-    [['확대 61×61 픽셀',0],['창 밀기 지도',sd+GAP]].forEach(([t,x0])=>{cx2.font=`600 12px ${tok('--sans')}`;cx2.fillStyle='#fff';cx2.strokeStyle='rgba(0,0,0,.65)';cx2.lineWidth=3;cx2.strokeText(t,x0+6,16);cx2.fillText(t,x0+6,16)})});
+    cx2.font=`600 12px ${tok('--sans')}`;cx2.fillStyle='#fff';cx2.strokeStyle='rgba(0,0,0,.65)';cx2.lineWidth=3;cx2.strokeText('확대 61×61 픽셀',6,16);cx2.fillText('확대 61×61 픽셀',6,16)});
   // matching
   const [a0]=EXL(),e=FT.ex[a0+S5.k],qa=[e[0],e[1]],b1=[e[2],e[3]],b2=[e[4],e[5]],ratio=e[6]/e[7],pass=ratio<.75,okm=!!e[8];
   ['m-acc','m-rej'].forEach(id=>$(id).setAttribute('aria-pressed',(id==='m-acc')===(S5.mode==='acc')?'true':'false'));
@@ -658,23 +1645,329 @@ function renderFeat(){
   ctx.save();ctx.strokeStyle=c1;ctx.lineWidth=2.5;if(!pass)ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(qa[0]*k,qa[1]*k);ctx.lineTo(ox2+b1[0]*k,b1[1]*k);ctx.stroke();ctx.restore();
   dotI(ctx,qa[0]*k,qa[1]*k,acc,9,true);dotI(ctx,ox2+b1[0]*k,b1[1]*k,c1,9,true);dotI(ctx,ox2+b2[0]*k,b2[1]*k,mut,9,true);
   ctx.save();ctx.font=`600 13px ${tok('--sans')}`;ctx.fillStyle='#fff';ctx.strokeStyle='rgba(0,0,0,.65)';ctx.lineWidth=3;
-  [[qa[0]*k,qa[1]*k,'x_1'],[ox2+b1[0]*k,b1[1]*k,'1등'],[ox2+b2[0]*k,b2[1]*k,'2등']].forEach(t=>{ctx.strokeText(t[2],t[0]+12,t[1]-10);ctx.fillText(t[2],t[0]+12,t[1]-10)});ctx.restore();
-  $('mres').innerHTML=`d_1 = ${e[6].toFixed(0)}, d_2 = ${e[7].toFixed(0)} → ${ratio.toFixed(2)} · <b class="i">${pass?'통과':'버림'}</b> · ${okm?'실제로 맞는 짝':'<span style="color:var(--bad);font-weight:600">실제로 틀린 짝</span>'}`;
+  [[qa[0]*k,qa[1]*k,'x_1'],[ox2+b1[0]*k,b1[1]*k,'1등'],[ox2+b2[0]*k,b2[1]*k,'2등']].forEach(t=>canvasText(ctx,t[2],t[0]+12,t[1]-10,true));ctx.restore();
+  $('mres').innerHTML=`${math`d_1`} = ${e[6].toFixed(0)}, ${math`d_2`} = ${e[7].toFixed(0)} → ${ratio.toFixed(2)} · <b class="i">${pass?'통과':'버림'}</b> · ${okm?'실제로 맞는 짝':'<span style="color:var(--bad);font-weight:600">실제로 틀린 짝</span>'}`;
 }
 
-function renderAll(){render1();render2();render3();renderFeat();render4();renderR();render6()}
+/* 부록 A Hand-authored ray example: equal total foreground opacity in both representations. */
+const RAY_FRONT8=[.24,.64,.39],RAY_WALL8=[.59,.40,.73];
+const RAY8={mode:'nerf',n:16,opacity:.85};
+function raySamples8(mode,n,opacity){
+  const alpha=weight=>weight===0?0:opacity===1?1:-Math.expm1(Math.log1p(-opacity)*weight);
+  // The ray crosses each Gaussian center (G = 1); split the foreground optical thickness between two ellipsoids.
+  if(mode==='gaussian')return [
+    {x:.31,alpha:alpha(.6),color:RAY_FRONT8},{x:.47,alpha:alpha(.4),color:RAY_FRONT8},{x:.9,alpha:1,color:RAY_WALL8}
+  ];
+  const profile=Array.from({length:n-1},(_,i)=>{const x=(i+.5)/n;return x>=.14&&x<=.62?Math.exp(-.5*((x-.36)/.1)**2):0});
+  const sum=profile.reduce((a,b)=>a+b,0);
+  // Normalize optical thickness so changing the sample count preserves the foreground opacity.
+  const samples=profile.map((p,i)=>({x:(i+.5)/n,alpha:alpha(p/sum),density:p===0?0:opacity===1?Infinity:-Math.log1p(-opacity)*n*p/sum,color:RAY_FRONT8}));
+  samples.push({x:(n-.5)/n,alpha:1,density:Infinity,color:RAY_WALL8});return samples;
+}
+function compositeRay8(samples){
+  const color=[0,0,0],weights=[],transmittance=[];let remaining=1;
+  samples.forEach(sample=>{
+    transmittance.push(remaining);const weight=remaining*sample.alpha;weights.push(weight);
+    color.forEach((_,i)=>color[i]+=weight*sample.color[i]);remaining*=1-sample.alpha;
+  });
+  transmittance.push(remaining);return {color,weights,transmittance};
+}
+const RAY_PHOTO8=compositeRay8(raySamples8('nerf',16,.35)).color;
+function rayLoss8(mode,n,opacity){return compositeRay8(raySamples8(mode,n,opacity)).color.reduce((loss,v,i)=>loss+(v-RAY_PHOTO8[i])**2,0)}
+function improveOpacity8(mode,n,opacity){
+  const low=Math.max(0,opacity-.0001),high=Math.min(1,opacity+.0001);
+  const gradient=(rayLoss8(mode,n,high)-rayLoss8(mode,n,low))/(high-low);
+  const next=Math.max(0,Math.min(1,opacity-1.2*gradient));
+  return rayLoss8(mode,n,next)<rayLoss8(mode,n,opacity)?next:opacity;
+}
+['nerf','gaussian'].forEach(mode=>$('ray-'+mode).onclick=()=>{RAY8.mode=mode;render8()});
+$('ray-count').addEventListener('input',e=>{RAY8.n=+e.target.value;render8()});
+$('ray-opacity').addEventListener('input',e=>{RAY8.opacity=+e.target.value;render8()});
+$('ray-learn').onclick=()=>{RAY8.opacity=improveOpacity8(RAY8.mode,RAY8.n,RAY8.opacity);$('ray-opacity').value=RAY8.opacity;render8()};
+$('ray-reset').onclick=()=>{
+  Object.assign(RAY8,{mode:'nerf',n:16,opacity:.85});$('ray-count').value='16';$('ray-opacity').value='.85';render8();
+};
+function render8(){
+  if($('render').hidden)return;
+  const {mode,n,opacity}=RAY8,{ctx,w,h}=setup($('render-ray'),360/($('render-ray').clientWidth||300));
+  const samples=raySamples8(mode,n,opacity),result=compositeRay8(samples),left=120,right=w-290,span=right-left,y=164;
+  const rgb=c=>`rgb(${c.map(v=>Math.round(v*255)).join(',')})`,front=rgb(RAY_FRONT8),wall=rgb(RAY_WALL8);
+  ctx.font=`13px ${tok('--sans')}`;ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle=tok('--ink');ctx.fillText('카메라',48,y+39);ctx.strokeStyle=tok('--muted');ctx.lineWidth=1.5;
+  ctx.strokeRect(30,y-14,26,28);ctx.beginPath();ctx.moveTo(56,y-9);ctx.lineTo(76,y-21);ctx.lineTo(76,y+21);ctx.lineTo(56,y+9);ctx.closePath();ctx.stroke();
+  ctx.beginPath();ctx.moveTo(76,y);ctx.lineTo(right+12,y);ctx.lineTo(right+4,y-4);ctx.moveTo(right+12,y);ctx.lineTo(right+4,y+4);ctx.stroke();
+  ctx.fillStyle=tok('--ink');ctx.fillText('앞 물체',left+span*.38,222);ctx.fillText('뒤 벽',left+span*samples.at(-1).x,222);
+  if(mode==='nerf'){
+    ctx.fillStyle=front;ctx.globalAlpha=.12;ctx.fillRect(left+span*.14,y-24,span*.48,48);ctx.globalAlpha=1;
+    ctx.fillStyle=wall;ctx.fillRect(left+span*samples.at(-1).x-5,y-40,10,80);
+    ctx.strokeStyle=front;ctx.lineWidth=2;ctx.beginPath();
+    samples.forEach((sample,i)=>{const x=left+sample.x*span,yy=112-65*Math.min(1,sample.density/12);if(i)ctx.lineTo(x,yy);else ctx.moveTo(x,yy)});ctx.stroke();
+    ctx.fillStyle=tok('--muted');ctx.textAlign='left';ctx.fillText('밀도',left,34);ctx.textAlign='center';
+    samples.forEach(sample=>{
+      const x=left+sample.x*span;ctx.strokeStyle=tok('--line');ctx.lineWidth=1;ctx.beginPath();ctx.arc(x,y,2,0,7);ctx.stroke();
+      if(sample.alpha){ctx.fillStyle=rgb(sample.color);ctx.beginPath();ctx.arc(x,y,9*sample.alpha,0,7);ctx.fill()}
+    });
+  }else{
+    samples.slice().reverse().forEach((sample,j)=>{
+      const i=samples.length-1-j,x=left+sample.x*span,rx=span*(i===2?.035:.09),ry=i===2?66:54;
+      const gradient=ctx.createRadialGradient(x-rx*.3,y-ry*.3,1,x,y,ry);gradient.addColorStop(0,rgb(sample.color));gradient.addColorStop(1,`rgba(${sample.color.map(v=>Math.round(v*255)).join(',')},0)`);
+      ctx.globalAlpha=sample.alpha;ctx.fillStyle=gradient;ctx.beginPath();ctx.ellipse(x,y,rx,ry,i===0?-.3:.2,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+      ctx.fillStyle=tok('--ink');ctx.fillText(String(i+1),x,80);
+    });
+  }
+  ctx.textAlign='left';ctx.fillStyle=tok('--muted');ctx.fillText('막대: 쌓인 몫 T·α · 선: 아직 안 가려진 정도 T',left,250);
+  const base=338,height=66,bw=span/samples.length;
+  ctx.strokeStyle=tok('--line');ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(left,base);ctx.lineTo(right,base);ctx.stroke();
+  result.weights.forEach((weight,i)=>{ctx.fillStyle=rgb(samples[i].color);ctx.fillRect(left+i*bw+1,base-height*weight,Math.max(1,bw-2),height*weight)});
+  ctx.strokeStyle=tok('--ink');ctx.lineWidth=2;ctx.beginPath();
+  result.transmittance.forEach((t,i)=>{const x=left+i*bw,yy=base-height*t;if(i){ctx.lineTo(x,base-height*result.transmittance[i-1]);ctx.lineTo(x,yy)}else ctx.moveTo(x,yy)});ctx.stroke();
+  const sx=w-218,sw=144;
+  ctx.textAlign='center';ctx.fillStyle=tok('--ink');ctx.fillText('그린 픽셀',sx+sw/2,42);ctx.fillText('사진 픽셀',sx+sw/2,223);
+  ctx.fillStyle=rgb(result.color);ctx.fillRect(sx,60,sw,62);ctx.fillStyle=rgb(RAY_PHOTO8);ctx.fillRect(sx,241,sw,62);
+  ctx.fillStyle=tok('--muted');ctx.fillText('차이',sx+sw/2,158);ctx.fillStyle=tok('--grid');ctx.fillRect(sx,177,sw,10);
+  const scale=Math.hypot(...RAY_FRONT8.map((v,i)=>v-RAY_WALL8[i]));ctx.fillStyle=tok('--x');ctx.fillRect(sx,177,sw*Math.min(1,Math.sqrt(rayLoss8(mode,n,opacity))/scale),10);
+  ['nerf','gaussian'].forEach(value=>$('ray-'+value).setAttribute('aria-pressed',String(mode===value)));
+  $('ray-count-label').hidden=mode!=='nerf';$('ray-count-out').value=n;
+}
+
+/* 부록 B Equations: GGGS (1, 6, 12), Gaussian Wrapping (7), MeshSplatting (1, 2, 4). */
+function gaussian9(p,sx,sy,angle,o,n){
+  const c=Math.cos(angle),s=Math.sin(angle),a=1/(sx*sx),b=1/(sy*sy);
+  return {p,sx,sy,angle,o,n,inv:[a*c*c+b*s*s,(a-b)*c*s,a*s*s+b*c*c]};
+}
+function gaussianValue9(g,p,half=1){const x=p[0]-g.p[0],y=p[1]-g.p[1],[a,b,c]=g.inv;return g.o*Math.exp(-half*(a*x*x+2*b*x*y+c*y*y))}
+function gaussianPeak9(g,origin,direction){
+  const x=origin[0]-g.p[0],y=origin[1]-g.p[1],[u,v]=direction,[a,b,c]=g.inv;
+  return Math.max(0,-(u*(a*x+b*y)+v*(b*x+c*y))/(a*u*u+2*b*u*v+c*v*v));
+}
+function bisect9(fn,a,b){
+  let va=fn(a)-.5;const vb=fn(b)-.5;if(va===0)return a;if(vb===0)return b;if(va*vb>0)return null;
+  for(let i=0;i<34;i++){const mid=(a+b)/2,v=fn(mid)-.5;if((v>0)===(va>0)){a=mid;va=v}else b=mid}
+  return (a+b)/2;
+}
+const GG_SURFACE9=Array.from({length:8},(_,i)=>{const y=-.95+i*1.9/7;return gaussian9([.22+.32*y,y],.33,.12,Math.atan2(1,.32),.87)});
+const GG_FLOATER9=gaussian9([-.32,.13],.14,.17,.15,.29);
+function ggRay9(y,floater){
+  const origin=[-1.3,y],gs=floater?[...GG_SURFACE9,GG_FLOATER9]:GG_SURFACE9;
+  const peaks=gs.map(g=>{const t=gaussianPeak9(g,origin,[1,0]);return {g,t,alpha:gaussianValue9(g,[origin[0]+t,y])}}).sort((a,b)=>a.t-b.t);
+  let discrete=1,sum=0,weighted=0,median=null;
+  peaks.forEach(p=>{const weight=discrete*p.alpha;weighted+=weight*p.t;sum+=weight;discrete*=1-p.alpha;if(median===null&&discrete<=.5)median=p.t});
+  const continuous=t=>peaks.reduce((T,p)=>{const v=Math.sqrt(Math.max(1e-15,1-gaussianValue9(p.g,[origin[0]+t,y])));return T*(t<=p.t?v:(1-p.alpha)/v)},1);
+  return {origin,peaks,mean:sum?weighted/sum:null,median,continuous,depth:bisect9(continuous,0,2.6)};
+}
+function circumcircle9(points,v){
+  const [a,b,c]=v.map(i=>points[i]),d=2*(a[0]*(b[1]-c[1])+b[0]*(c[1]-a[1])+c[0]*(a[1]-b[1]));
+  if(Math.abs(d)<1e-12)return null;
+  const aa=a[0]**2+a[1]**2,bb=b[0]**2+b[1]**2,cc=c[0]**2+c[1]**2;
+  const center=[(aa*(b[1]-c[1])+bb*(c[1]-a[1])+cc*(a[1]-b[1]))/d,(aa*(c[0]-b[0])+bb*(a[0]-c[0])+cc*(b[0]-a[0]))/d];
+  return {v,c:center,r2:(center[0]-a[0])**2+(center[1]-a[1])**2};
+}
+function delaunay9(points){
+  const n=points.length,x=points.map(p=>p[0]),y=points.map(p=>p[1]),cx=(Math.min(...x)+Math.max(...x))/2,cy=(Math.min(...y)+Math.max(...y))/2;
+  const span=Math.max(Math.max(...x)-Math.min(...x),Math.max(...y)-Math.min(...y)),all=[...points,[cx-20*span,cy-10*span],[cx,cy+20*span],[cx+20*span,cy-10*span]];
+  let triangles=[circumcircle9(all,[n,n+1,n+2])];
+  for(let i=0;i<n;i++){
+    const edges=new Map(),bad=new Set();
+    triangles.forEach((t,j)=>{
+      if((all[i][0]-t.c[0])**2+(all[i][1]-t.c[1])**2>t.r2+1e-10)return;
+      bad.add(j);for(let e=0;e<3;e++){const v=[t.v[e],t.v[(e+1)%3]].sort((a,b)=>a-b),key=v.join(',');if(edges.has(key))edges.delete(key);else edges.set(key,v)}
+    });
+    triangles=triangles.filter((_,j)=>!bad.has(j));
+    edges.forEach(edge=>{const t=circumcircle9(all,[...edge,i]);if(t)triangles.push(t)});
+  }
+  return triangles.filter(t=>t.v.every(i=>i<n));
+}
+function triangulationEdges9(triangles){
+  const edges=new Map();triangles.forEach((t,i)=>{for(let k=0;k<3;k++){const v=[t.v[k],t.v[(k+1)%3]].sort((a,b)=>a-b),key=v.join(',');if(!edges.has(key))edges.set(key,{v,faces:[]});edges.get(key).faces.push(i)}});return [...edges.values()];
+}
+const WRAP_GAUSSIANS9=[];
+function wrapGaussian9(p,n,tangentScale,normalScale){return gaussian9(p,tangentScale,normalScale,Math.atan2(n[0],-n[1]),.96,n)}
+for(let i=0;i<12;i++){const a=2*Math.PI*i/12,n=[Math.cos(a),Math.sin(a)];WRAP_GAUSSIANS9.push(wrapGaussian9([-.43+.43*n[0],.03+.43*n[1]],n,.20,.065))}
+for(const side of [-1,1])for(let i=0;i<4;i++)WRAP_GAUSSIANS9.push(wrapGaussian9([.62+side*.06,-.42+i*.28],[side,0],.20,.045));
+for(const side of [-1,1])WRAP_GAUSSIANS9.push(wrapGaussian9([.62,side*.50],[0,side],.085,.05));
+const WRAP_CAMERAS9=Array.from({length:8},(_,i)=>[2*Math.cos(i*Math.PI/4),2*Math.sin(i*Math.PI/4)]);
+function vacancy9(p){
+  let best=0;
+  for(const origin of WRAP_CAMERAS9){
+    const dx=p[0]-origin[0],dy=p[1]-origin[1],t=Math.hypot(dx,dy),direction=[dx/t,dy/t];let T=1;
+    for(const g of WRAP_GAUSSIANS9){const depth=Math.min(t,gaussianPeak9(g,origin,direction));T*=1-gaussianValue9(g,[origin[0]+depth*direction[0],origin[1]+depth*direction[1]],.5)}
+    best=Math.max(best,T);
+  }
+  return best;
+}
+function wrapMesh9(mode){
+  const points=[];
+  for(const g of WRAP_GAUSSIANS9){
+    points.push(g.p);
+    if(mode===2)points.push(g.p.map((v,i)=>v+3*g.sy*g.n[i]));
+    else for(const a of [-1,1])for(const b of [-1,1])points.push([g.p[0]+3*(a*g.sx*Math.cos(g.angle)-b*g.sy*Math.sin(g.angle)),g.p[1]+3*(a*g.sx*Math.sin(g.angle)+b*g.sy*Math.cos(g.angle))]);
+  }
+  const values=points.map(vacancy9),triangles=delaunay9(points),crossings=new Map(),segments=[];
+  for(const triangle of triangles){
+    const hits=[];
+    for(let i=0;i<3;i++){
+      const a=triangle.v[i],b=triangle.v[(i+1)%3];if((values[a]<.5)===(values[b]<.5))continue;
+      const key=[a,b].sort((a,b)=>a-b).join(',');
+      if(!crossings.has(key)){const t=bisect9(t=>vacancy9(points[a].map((v,d)=>v+t*(points[b][d]-v))),0,1);crossings.set(key,points[a].map((v,d)=>v+t*(points[b][d]-v)))}
+      hits.push(key);
+    }
+    if(hits.length===2)segments.push(hits);
+  }
+  return {points,values,triangles,crossings,segments};
+}
+function intersects9(a,b,c,d,ray=false){
+  const r=[b[0]-a[0],b[1]-a[1]],s=[d[0]-c[0],d[1]-c[1]],q=[c[0]-a[0],c[1]-a[1]],cross=(u,v)=>u[0]*v[1]-u[1]*v[0],den=cross(r,s);
+  if(Math.abs(den)<1e-12){
+    const rr=r[0]**2+r[1]**2;if(rr<1e-20||Math.abs(cross(q,r))>1e-10)return false;
+    const t=[c,d].map(p=>((p[0]-a[0])*r[0]+(p[1]-a[1])*r[1])/rr);return Math.max(...t)>=0&&(ray||Math.min(...t)<=1);
+  }
+  const t=cross(q,s)/den,u=cross(q,r)/den;return t>=-1e-10&&(ray||t<=1+1e-10)&&u>=-1e-10&&u<=1+1e-10;
+}
+function soupMesh9(){
+  const points=[],soup=[];
+  for(let i=0;i<20;i++){
+    const x=-.95+i*.10,tangent=Math.atan(.84*x+.27*x*x),angle=tangent+Math.PI/12*Math.sin(1.2*i),offset=.015*Math.sin(.4*i);
+    const center=[x-offset*Math.sin(tangent),.42*x*x+.09*x*x*x-.18+offset*Math.cos(tangent)];
+    const pair=[-1,1].map(side=>[center[0]+side*.085*Math.cos(angle),center[1]+side*.085*Math.sin(angle)]);
+    soup.push([points.length,points.length+1]);points.push(...pair);
+  }
+  const triangles=delaunay9(points),edges=triangulationEdges9(triangles),restricted=[];
+  for(const edge of edges){
+    const a=triangles[edge.faces[0]].c;let b;
+    if(edge.faces.length===2)b=triangles[edge.faces[1]].c;
+    else{
+      const p=points[edge.v[0]],q=points[edge.v[1]],third=points[triangles[edge.faces[0]].v.find(i=>!edge.v.includes(i))];
+      let normal=[q[1]-p[1],p[0]-q[0]];if(normal[0]*(third[0]-(p[0]+q[0])/2)+normal[1]*(third[1]-(p[1]+q[1])/2)>0)normal=normal.map(v=>-v);
+      b=[a[0]+normal[0],a[1]+normal[1]];
+    }
+    if(soup.some(([i,j])=>intersects9(a,b,points[i],points[j],edge.faces.length===1)))restricted.push(edge.v);
+  }
+  return {points,soup,triangles,edges,restricted};
+}
+const SPLAT_TRIANGLE9=[[-.85,.68],[.85,.56],[-.1,-.74]];
+const SPLAT_INCENTER9=(()=>{const p=SPLAT_TRIANGLE9,weights=p.map((_,i)=>Math.hypot(p[(i+1)%3][0]-p[(i+2)%3][0],p[(i+1)%3][1]-p[(i+2)%3][1])),sum=weights.reduce((a,b)=>a+b,0);return [0,1].map(d=>p.reduce((s,v,i)=>s+weights[i]*v[d],0)/sum)})();
+function trianglePhi9(p){
+  return Math.max(...SPLAT_TRIANGLE9.map((a,i)=>{const b=SPLAT_TRIANGLE9[(i+1)%3],dx=b[0]-a[0],dy=b[1]-a[1],length=Math.hypot(dx,dy);let value=((p[0]-a[0])*(-dy)+(p[1]-a[1])*dx)/length;const center=((SPLAT_INCENTER9[0]-a[0])*(-dy)+(SPLAT_INCENTER9[1]-a[1])*dx)/length;return center>0?-value:value}));
+}
+// Preserve exact edge zeros when a tiny exponent would amplify floating-point residue.
+function triangleWindow9(p,progress){const value=trianglePhi9(p)/trianglePhi9(SPLAT_INCENTER9);return value<1e-12?0:value**(1-.9999*progress)}
+function triangleOpacity9(progress){return progress+(1-progress)*.28}
+
+const RECENT9={floater:true,ray:59,wrap:0,pivots:2,soup:0,progress:0};let RECENT_CACHE9=null,TRIANGLE_IMAGE9=null,TRIANGLE_PROGRESS9=null;
+function image9(width,height,pixel){
+  const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+  const ctx=canvas.getContext('2d'),data=ctx.createImageData(width,height);
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++)data.data.set([...pixel(x,y),255],4*(y*width+x));
+  ctx.putImageData(data,0,0);return canvas;
+}
+function recentData9(){
+  if(!RECENT_CACHE9){
+    const field=image9(160,110,(x,y)=>{const v=vacancy9([-1.25+(x+.5)/160*2.35,.8-(y+.5)/110*1.6]),c=45+210*v;return [c,c,c]});
+    RECENT_CACHE9={gg:[false,true].map(f=>Array.from({length:120},(_,i)=>ggRay9(-1+2*i/119,f))),wrap:{2:wrapMesh9(2),5:wrapMesh9(5)},soup:soupMesh9(),field};
+  }
+  return RECENT_CACHE9;
+}
+function plot9(id,height,bounds){
+  const {ctx,w,h}=setup($(id),height/($(id).clientWidth||300));
+  const to=([x,y])=>[24+(x-bounds[0])/(bounds[1]-bounds[0])*(w-48),h-24-(y-bounds[2])/(bounds[3]-bounds[2])*(h-48)];
+  return {ctx,w,h,to};
+}
+function line9(ctx,to,points,color,width=1,dash=[]){
+  ctx.save();ctx.strokeStyle=color;ctx.lineWidth=width;ctx.setLineDash(dash);ctx.beginPath();let started=false;
+  points.forEach(p=>{if(!p){started=false;return}const q=to(p);if(started)ctx.lineTo(...q);else ctx.moveTo(...q);started=true});ctx.stroke();ctx.restore();
+}
+function ellipse9(ctx,to,g,color,alpha){
+  const c=Math.cos(g.angle),s=Math.sin(g.angle);ctx.save();ctx.globalAlpha=alpha;ctx.fillStyle=ctx.strokeStyle=color;ctx.lineWidth=1;ctx.beginPath();
+  for(let i=0;i<=40;i++){const a=i*Math.PI/20,x=g.sx*Math.cos(a),y=g.sy*Math.sin(a),p=to([g.p[0]+c*x-s*y,g.p[1]+s*x+c*y]);if(i)ctx.lineTo(...p);else ctx.moveTo(...p)}
+  ctx.fill();ctx.stroke();ctx.restore();
+}
+function drawGg9(data){
+  const rays=data.gg[RECENT9.floater?1:0],scene=plot9('gg-depth9',340,[-1.55,1.35,-1.15,1.15]),{ctx,to}=scene;
+  for(let i=0;i<120;i+=12){const y=-1+2*i/119;line9(ctx,to,[[-1.3,y],[1.3,y]],tok('--line'),.7)}
+  const selected=-1+2*RECENT9.ray/119;line9(ctx,to,[[-1.3,selected],[1.3,selected]],tok('--ink'),1.1,[3,4]);
+  line9(ctx,to,[[-1.3,-1.02],[-1.3,1.02]],tok('--muted'),2);
+  const camera=to([-1.44,0]);ctx.strokeStyle=tok('--muted');ctx.strokeRect(camera[0]-9,camera[1]-12,18,24);
+  GG_SURFACE9.forEach(g=>ellipse9(ctx,to,g,tok('--p'),.16));if(RECENT9.floater)ellipse9(ctx,to,GG_FLOATER9,tok('--x'),.28);
+  for(const [key,color,dash] of [['mean','--x',[]],['median','--img',[5,4]],['depth','--p',[]]])line9(ctx,to,rays.map((r,i)=>r[key]===null?null:[r.origin[0]+r[key],-1+2*i/119]),tok(color),key==='depth'?2.8:1.8,dash);
+  const graph=plot9('gg-trans9',160,[-1.55,1.35,-.12,1.12]),ray=rays[RECENT9.ray],steps=[[-1.3,1]];let T=1;
+  ray.peaks.forEach(p=>{steps.push([p.t-1.3,T]);T*=1-p.alpha;steps.push([p.t-1.3,T])});steps.push([1.3,T]);
+  line9(graph.ctx,graph.to,[[-1.3,.5],[1.3,.5]],tok('--muted'),1,[3,4]);
+  line9(graph.ctx,graph.to,steps,tok('--img'),1.8,[5,3]);
+  line9(graph.ctx,graph.to,Array.from({length:200},(_,i)=>{const t=2.6*i/199;return [t-1.3,ray.continuous(t)]}),tok('--p'),2.5);
+  for(const [key,color,dash] of [['mean','--x',[]],['median','--img',[4,4]],['depth','--p',[]]])if(ray[key]!==null)line9(graph.ctx,graph.to,[[ray[key]-1.3,0],[ray[key]-1.3,1]],tok(color),1.2,dash);
+  $('gg-floater9').setAttribute('aria-pressed',String(RECENT9.floater));
+}
+function drawWrap9(data){
+  const stage=RECENT9.wrap,mesh=data.wrap[RECENT9.pivots],{ctx,to}=plot9('wrap-scene9',440,[-1.6,1.6,-1.2,1.2]);
+  if(stage){
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,$('wrap-scene9').clientWidth,440);
+    const a=to([-1.25,.8]),b=to([1.1,-.8]);ctx.drawImage(data.field,a[0],a[1],b[0]-a[0],b[1]-a[1]);
+  }
+  for(const g of WRAP_GAUSSIANS9){
+    ellipse9(ctx,to,g,tok('--p'),stage?.12:.3);
+    if(stage===0){
+      const a=to(g.p),b=to(g.p.map((v,i)=>v+.16*g.n[i]));ctx.strokeStyle=tok('--ink');ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(...a);ctx.lineTo(...b);ctx.stroke();
+      const angle=Math.atan2(b[1]-a[1],b[0]-a[0]);ctx.beginPath();ctx.moveTo(...b);ctx.lineTo(b[0]-5*Math.cos(angle-.45),b[1]-5*Math.sin(angle-.45));ctx.moveTo(...b);ctx.lineTo(b[0]-5*Math.cos(angle+.45),b[1]-5*Math.sin(angle+.45));ctx.stroke();
+    }
+  }
+  // Camera glyphs are placed closer to the scene; the vacancy still uses the actual ray origins.
+  for(const origin of WRAP_CAMERAS9){
+    const p=to(origin.map(v=>v*.52)),target=to([0,0]);ctx.save();ctx.translate(...p);ctx.rotate(Math.atan2(target[1]-p[1],target[0]-p[0]));
+    ctx.strokeStyle=stage?'#49515d':tok('--muted');ctx.lineWidth=1;ctx.strokeRect(-7,-4,8,8);
+    ctx.beginPath();ctx.moveTo(1,-3);ctx.lineTo(10,-7);ctx.lineTo(10,7);ctx.lineTo(1,3);ctx.closePath();ctx.stroke();ctx.restore();
+  }
+  if(stage>=2){
+    ctx.save();ctx.globalAlpha=stage===3?.22:.55;
+    mesh.triangles.forEach(t=>line9(ctx,to,[...t.v,t.v[0]].map(i=>mesh.points[i]),'#6d7785',.8));ctx.restore();
+    mesh.points.forEach((p,i)=>{const q=to(p);ctx.fillStyle=mesh.values[i]<.5?'#27313d':'#fff';ctx.strokeStyle='#27313d';ctx.lineWidth=1;ctx.beginPath();ctx.arc(...q,3,0,7);ctx.fill();ctx.stroke()});
+  }
+  if(stage)mesh.segments.forEach(keys=>line9(ctx,to,keys.map(key=>mesh.crossings.get(key)),stage===3?tok('--p'):'#a8b7ac',stage===3?3:1));
+  Array.from($('wrap-stages9').children).forEach((button,i)=>button.setAttribute('aria-pressed',String(i===stage)));
+  $('wrap-two9').setAttribute('aria-pressed',String(RECENT9.pivots===2));$('wrap-five9').setAttribute('aria-pressed',String(RECENT9.pivots===5));
+  $('wrap-stages9').children[2].textContent=RECENT9.pivots===2?'점 2개씩 + 삼각망':'점 5개씩 + 삼각망';
+}
+function drawMesh9(data){
+  const {ctx,w,h}=setup($('mesh-window9'),.65),progress=RECENT9.progress;
+  if(TRIANGLE_PROGRESS9!==progress){
+    TRIANGLE_IMAGE9=image9(280,190,(x,y)=>{
+      const p=[-1+2*(x+.5)/280,.9-1.8*(y+.5)/190],alpha=triangleOpacity9(progress)*triangleWindow9(p,progress),background=(Math.floor(x/14)+Math.floor(y/14))%2?214:246;
+      return [86,152,111].map(v=>alpha*v+(1-alpha)*background);
+    });TRIANGLE_PROGRESS9=progress;
+  }
+  ctx.drawImage(TRIANGLE_IMAGE9,0,0,w,h);
+  const scene=plot9('mesh-soup9',Math.round($('mesh-soup9').clientWidth*.65),[-1.15,1.15,-.4,.55]),stage=RECENT9.soup,mesh=data.soup;
+  if(stage)mesh.edges.forEach(e=>line9(scene.ctx,scene.to,e.v.map(i=>mesh.points[i]),tok('--line'),1));
+  if(stage<2){scene.ctx.save();scene.ctx.globalAlpha=.45;mesh.soup.forEach(e=>line9(scene.ctx,scene.to,e.map(i=>mesh.points[i]),tok('--img'),3));scene.ctx.restore()}
+  else{
+    scene.ctx.save();scene.ctx.globalAlpha=triangleOpacity9(progress);mesh.restricted.forEach(e=>line9(scene.ctx,scene.to,e.map(i=>mesh.points[i]),tok('--p'),3.5));scene.ctx.restore();
+  }
+  scene.ctx.fillStyle=tok('--ink');mesh.points.forEach(p=>{scene.ctx.beginPath();scene.ctx.arc(...scene.to(p),2.5,0,7);scene.ctx.fill()});
+  Array.from($('soup-stages9').children).forEach((button,i)=>button.setAttribute('aria-pressed',String(i===stage)));
+}
+$('gg-floater9').onclick=()=>{RECENT9.floater=!RECENT9.floater;render9()};
+$('gg-ray9').addEventListener('input',e=>{RECENT9.ray=+e.target.value;render9()});
+Array.from($('wrap-stages9').children).forEach((button,i)=>button.onclick=()=>{RECENT9.wrap=i;render9()});
+['two','five'].forEach((id,i)=>$('wrap-'+id+'9').onclick=()=>{RECENT9.pivots=i?5:2;render9()});
+Array.from($('soup-stages9').children).forEach((button,i)=>button.onclick=()=>{RECENT9.soup=i;render9()});
+$('mesh-progress9').addEventListener('input',e=>{RECENT9.progress=+e.target.value;render9()});
+function render9(){if($('recent').hidden)return;const data=recentData9();drawGg9(data);drawWrap9(data);drawMesh9(data)}
+
+function renderAll(){render1();render2();render3();renderFeat();render4();renderR();render6();render7();render8();render9()}
 new ResizeObserver(()=>renderAll()).observe(document.body);
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',renderAll);
 new MutationObserver(renderAll).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
 /* pages: one step at a time */
-const PAGES=['rt','k','ep','feat','fm','sfm'];let cur=0;
+const PAGES=['roadmap','rt','k','ep','feat','fm','sfm','mesh','render','recent'];let cur=0;
+const MAIN_PAGE_COUNT=PAGES.indexOf('render');
 function show(i,push){cur=Math.max(0,Math.min(PAGES.length-1,i));
   PAGES.forEach((id,j)=>{$(id).hidden=j!==cur});
-  document.querySelectorAll('.flow a').forEach((a,j)=>{if(j===cur)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
-  $('pgPrev').disabled=cur===0;$('pgNext').disabled=cur===PAGES.length-1;$('pgNum').textContent=(cur+1)+' / '+PAGES.length;
+  $('formula-box').hidden=PAGES[cur]==='roadmap';
+  document.querySelectorAll('#formula-box .formula-row').forEach(row=>{row.hidden=PAGES.indexOf(row.dataset.from)>cur});
+  document.querySelectorAll('header .flow a').forEach((a,j)=>{if(j===cur)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
+  $('pgPrev').disabled=cur===0;$('pgNext').disabled=cur===PAGES.length-1;$('pgNum').textContent=cur<MAIN_PAGE_COUNT?(cur+1)+' / '+MAIN_PAGE_COUNT:cur===MAIN_PAGE_COUNT?'부록 A':'부록 B';
   if(push&&location.hash!=='#'+PAGES[cur])location.hash=PAGES[cur];
   renderAll();window.scrollTo({top:0})}
-document.querySelectorAll('.flow a').forEach((a,j)=>a.addEventListener('click',e=>{e.preventDefault();show(j,true)}));
+document.querySelectorAll('header .flow a').forEach((a,j)=>a.addEventListener('click',e=>{e.preventDefault();show(j,true)}));
 $('pgPrev').onclick=()=>show(cur-1,true);$('pgNext').onclick=()=>show(cur+1,true);
 addEventListener('hashchange',()=>{const j=PAGES.indexOf(location.hash.slice(1));if(j>=0&&j!==cur)show(j)});
 addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.key==='ArrowRight')show(cur+1,true);if(e.key==='ArrowLeft')show(cur-1,true)});
